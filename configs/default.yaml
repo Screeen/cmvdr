@@ -10,7 +10,7 @@ data_types_all: [synthetic, instruments, speech, synthetic_f0_err, plot_spectrog
 print_results: 1
 plot:
   destination:                  'debug'  # alternatives are debug, slides, paper
-  destination_final_results:    'paper'  # debug, slides, paper
+  destination_final_results:    'slides'  # debug, slides, paper
   intermediate_results:         0
   spectrograms:                 0
   all_variations:               0
