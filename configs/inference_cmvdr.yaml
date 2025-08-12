@@ -6,8 +6,8 @@ data_type: inference
 data_types_all: [inference]
 
 data:
-  input_dir: ../datasets/test_cmvdr/noisy
-  output_dir: ../datasets/test_cmvdr/noisy_output
+  input_dir: ./demo/noisy
+  output_dir: ./demo/noisy_output
 
 beamforming:
   methods_dict:  # set everything to false to skip the computation of the covariance matrices and the beamforming

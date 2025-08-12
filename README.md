@@ -76,7 +76,7 @@ source script/run_all.sh
 To apply the cMVDR beamformer to your own audio files, you can use the inference script.
 This script processes audio files in a specified folder and saves the output to another folder.
 ```bash
-python script/cmvdr_inference.py
+python -m script.cmvdr_inference
 ```
 Specify the folder containing audio files in the `config/cmvdr_inference.yaml` YAML file:
 ```yaml

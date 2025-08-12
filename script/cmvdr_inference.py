@@ -33,4 +33,4 @@ em.run_cmvdr_inference_folder(input_folder=input_dir, output_folder=output_dir, 
 if output_dir and output_dir.exists() and output_dir.is_dir():
     # Open the output directory in Finder on macOS
     if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
-        subprocess.run(["open", "-W", output_dir])  # For macOS, opens
+        subprocess.Popen(["open", output_dir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
