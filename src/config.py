@@ -112,22 +112,6 @@ class ConfigManager:
         return parameters, default_values, varying_param_values
 
     @staticmethod
-    def is_tex_installed():
-        """ Check if LaTeX is installed on the system """
-        import subprocess
-        try:
-            result = subprocess.run(['kpsewhich', 'type1cm.sty'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if result.returncode == 0 and result.stdout.strip():
-                return True
-            else:
-                warnings.warn("LaTeX is not installed or type1cm.sty not found. Using matplotlib instead of LaTeX for plotting.")
-                return False
-        except (FileNotFoundError, subprocess.CalledProcessError):
-            warnings.warn(
-                "LaTeX is not installed or type1cm.sty not found. Using matplotlib instead of LaTeX for plotting.")
-            return False
-
-    @staticmethod
     def get_plot_settings(plot_settings_in):
 
         plot_settings_out = plot_settings_in.copy()
@@ -135,21 +119,15 @@ class ConfigManager:
         # plot_destination: debug, slides, paper
         for_export = plot_settings_in['destination'] != 'debug'
 
-        # Check if latex is installed first
-        tex_installed = ConfigManager.is_tex_installed()
-
         plot_settings_out.update({
             'show_date_plots': False if for_export else True,
-            'use_tex': True if (for_export and tex_installed) else False,
+            'use_tex': True if for_export else False,
             'save_plots': True if for_export else False,
             'separately': True if plot_settings_in['destination'] == 'paper' else False,
             'force_no_plots': False,
             'show_title': True,
             'show_legend': True,
         })
-
-        if not tex_installed:
-            utils.set_plot_options(use_tex=False)
 
         # Enable/disable plots
         plot_types = ['f0_spectrogram', 'spectrograms', 'all_variations', 'waveforms', 'error_per_frequency']
@@ -202,10 +180,10 @@ class ConfigManager:
             signals_to_modulate.append('noise_cov_est')
 
         return signals_to_modulate
-
+    
     @staticmethod
     def get_varying_parameters_names(cfg_default):
-
+        
         varying_parameters_names = cfg_default['varying_parameters_names']
         varying_parameters_names = varying_parameters_names[:cfg_default['max_num_varying_parameters']]
         return varying_parameters_names
@@ -290,8 +268,7 @@ def get_config_single_variation(cfg_exp, idx_var, varying_parameter_name):
             cfg_single_var[dict_name][param_name] = cfg_exp['varying_params_values'][varying_parameter_name][idx_var]
         elif len(split_name) == 3:
             dict_name, sub_dict_name, param_name = split_name
-            cfg_single_var[dict_name][sub_dict_name][param_name] = \
-            cfg_exp['varying_params_values'][varying_parameter_name][idx_var]
+            cfg_single_var[dict_name][sub_dict_name][param_name] = cfg_exp['varying_params_values'][varying_parameter_name][idx_var]
         else:
             raise NotImplementedError
     else:
@@ -301,6 +278,7 @@ def get_config_single_variation(cfg_exp, idx_var, varying_parameter_name):
 
 
 def check_cyclic_target_or_not(cfg):
+
     try:
         cyclostationary_target = cfg['cyclostationary_target']
         sig_type = cfg['target']['sig_type'],
@@ -341,7 +319,7 @@ def adjust_config_for_debug(cfg_default):
         cfg_default['num_montecarlo_simulations'] = 1
         cfg_default['plot']['destination'] = 'debug'
         print(f"Running in debug mode. {cfg_default['num_montecarlo_simulations'] = } and "
-              f"{cfg_default['plot']['destination'] = }")
+                f"{cfg_default['plot']['destination'] = }")
     return cfg_default
 
 
@@ -383,8 +361,7 @@ def assign_default_values(cfg):
     cfg['time'] = cfg.get('time', {})
     cfg['time']['chunk_len_seconds'] = cfg['time'].get('chunk_len_seconds', 0.)
 
-    cfg['time']['duration_approx_seconds'] = cfg['time'].get('duration_approx_seconds',
-                                                             cfg['time']['chunk_len_seconds'])
+    cfg['time']['duration_approx_seconds'] = cfg['time'].get('duration_approx_seconds', cfg['time']['chunk_len_seconds'])
     cfg['time']['fixed_length_chunks'] = cfg['time'].get('fixed_length_chunks', True)
     cfg['time']['overlap_frame_cov_est_percentage'] = cfg['time'].get('overlap_frame_cov_est_percentage', 0)
 
