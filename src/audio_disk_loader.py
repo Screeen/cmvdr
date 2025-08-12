@@ -43,7 +43,7 @@ class AudioDiskLoader:
         Save a single audio file.
         :param output_file: Path to the output file.
         :param audio: Audio data to save.
-        :param param: Dictionary with parameters for saving the audio file.
+        :param fs: Sampling frequency for the audio file.
         """
         sf.write(output_file, audio, fs)
         print(f"Saved audio to {output_file}")
@@ -68,5 +68,6 @@ class AudioDiskLoader:
             for key, audio in signals.items():
                 if key != 'noise_cov_est':
                     # Save the audio file only if it is not noise_cov_est
-                    output_file = output_folder / f"{name}_{key}.wav"
+                    name_no_ext = Path(name).stem  # Remove file extension
+                    output_file = output_folder / f"{name_no_ext}_{key}.wav"
                     AudioDiskLoader.save_audio_file(output_file, audio, fs)
