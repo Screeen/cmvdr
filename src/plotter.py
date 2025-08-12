@@ -27,6 +27,22 @@ colors = ['tab:blue', 'tab:orange', 'tab:brown', 'tab:red', 'tab:brown', 'tab:pu
 # TODO: add entry for 'standard error' in legend
 
 
+def is_tex_plotting_available():
+    """ Check if LaTeX is available for plotting with matplotlib. """
+    import subprocess
+    try:
+        result = subprocess.run(['kpsewhich', 'type1cm.sty'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode == 0 and result.stdout.strip():
+            return True
+        else:
+            warnings.warn("LaTeX is not installed or type1cm.sty not found. Using matplotlib instead of LaTeX for plotting.")
+            return False
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        warnings.warn(
+            "LaTeX is not installed or type1cm.sty not found. Using matplotlib instead of LaTeX for plotting.")
+        return False
+
+
 def check_if_log_scale(arr):
     try:
         # Check if the array approximately follows a log scale, e.g. 1, 10, 100, 1000, ...
@@ -329,7 +345,10 @@ def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, pr
     plot_sett_['show_legend'] = False if plot_sett_['destination'] == 'paper' else True
     plot_sett_['show_title'] = False if plot_sett_['destination'] == 'paper' else True
     plot_sett_['target_folder_path'] = target_path_figs_
-    u.set_plot_options(use_tex=plot_sett_['use_tex'])
+
+    tex_available = is_tex_plotting_available()
+    u.set_plot_options(use_tex=plot_sett_['use_tex'] and tex_available)
+
     plot_sett_['save_plots'] = False if cfg['num_montecarlo_simulations'] <= 1 else plot_sett_['save_plots']
 
     # plot_sett_['forced_ranges'] = {'sisdr_time': [-1, 27.5]}

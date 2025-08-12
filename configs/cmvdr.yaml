@@ -158,11 +158,9 @@ plot_spectrograms:
 
 demo:
   num_montecarlo_simulations:  2
-  varying_parameters_names: [M, noise|snr_db_dir, cyclic|P_max, noise|harmonic_correlation]
+  varying_parameters_names: [noise|snr_db_dir, noise|harmonic_correlation]
   varying_params_values:
-    M: [ 1, 2, 4 ]
     noise|snr_db_dir: [ -20, -10, 0 ]
-    cyclic|P_max: [ 1, 2, 4, 8 ]
     noise|harmonic_correlation: [ 0.0, 0.3, 0.5, 0.8 ]
   cov_estimation:
     cov_est_forgetting_factor: 0.005
@@ -179,7 +177,7 @@ demo:
     sample_name: roy.wav
     angle: None
   harmonics_est:
-    max_num_harmonics_peaks: 6
+    max_num_harmonics_peaks: 5
   rir_specs:
     # Randomly select RIRs from the Hadad dataset or use handpicked RIRs
     # If you want to use handpicked RIRs, uncomment the common_path and target_path lines below and change the dataset_name to 'handpicked'.
