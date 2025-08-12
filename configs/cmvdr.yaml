@@ -1,0 +1,196 @@
+# Description: Default configuration for the cyclic beamforming experiments.
+num_montecarlo_simulations:       50
+max_num_varying_parameters:       199  # maximum number of experiments (e.g., SNR, P_Max, ....) to run. Set to 1 for debugging.
+max_num_variations_per_parameter: 199  # maximum number of variations (e.g. SNR = [0, 10, 20, 30]) to run. Set to 1 for debugging.
+
+varying_params_values:
+  M: [1, 2, 3, 4, 6]
+  noise|snr_db_dir: [-20, -10, 0, 10]
+  cyclic|P_max: [1, 2, 4, 8, 16]
+  stft|nfft: [512, 1024, 2048, 4096]
+  rir_specs|rt60: ["0.160s", "0.360s", "0.610s"]
+  noise|harmonic_correlation: [0.0, 0.2, 0.4, 0.6, 0.8, 0.99]
+  noise|inharmonicity_percentage: [0.0, 0.01, 0.1, 0.5]
+
+beamforming:
+  methods_dict:  # set everything to false to skip the computation of the covariance matrices and the beamforming
+    mvdr: true
+    cmvdr: true
+    cmvdr-wl: false  # this beamformer needs to operate on the whole frequency spectrum, output is too different from rest
+    clcmv: false
+    mwf: false
+    cmwf: false
+    mf: false
+
+  variants: ['blind', 'semi-oracle']  # 'blind', 'semi-oracle', 'oracle'
+  minimize_noisy_cov_mvdr: True
+  loadings:  # these values can make a lot of difference! Change with extreme care.
+    mvdr: [ 0, 0, 1000 ]  # min_load (not active 1.e-12), max_load (not active 1.e-1), max condition number (active)
+
+cyclostationary_target: false
+
+M: 2  # number of microphones
+stft:
+    nfft: 2048
+    overlap_fraction: 0.75
+    win_name: 'hann'
+
+datasets_path: ../datasets/
+target:
+  sig_type: sample
+  sample_name: speech_harvard
+  angle: None
+
+noise:
+  snr_db_self: 30
+  snr_db_dir: -10
+  sample_name: none
+  sig_type: sinusoidal
+  f0_hz: [ 60, 150 ]
+  num_harmonics: 16
+  inharmonicity_percentage: 0.
+  harmonic_correlation: 0.8
+  skip_convolution_rir: 0  # if true: this noise is also "self" noise (equal across mics, though)
+
+harmonics_est:
+  algo: periodogram_all_harmonics # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
+#    algo: oracle_f0 # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
+#    algo: oracle_f0_both_dir # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
+  min_dist_hz: 20
+  max_ratio_from_highest_peak: 10000
+
+  # 2 ** 14 = 16384, 2 ** 15 = 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728
+  nfft: 131072
+  max_len_seconds: 2.
+  wait_len_seconds: 0.1  # offset before starting the estimation (avoid transient)
+
+  snr_db_relative: 100 # noise_freq_est: how much is sinusoidal signal stronger than white noise coming from same direction
+
+  #  noise_cov_est # noise_freq_est  # makes a difference for real data, not for synthetic data
+  source_signal_name: noise_cov_est
+  min_width: 1
+  min_prominence: 0
+
+cyclic:
+  freq_range_cyclic: [20, 2500]
+  max_relative_dist_from_harmonic: 1.675
+  P_max: 8
+  use_global_coherence: true
+  harmonic_threshold: 0.6
+  coherence_source_signal_name: noisy  # using noisy signal helps for high SNR
+
+  # Good for music. no_change too small for speech (would lead to remodulation of the signals too often)
+  alpha_thresholds:
+    no_change: 0.0075  # up to this value, do not remodulate the signals
+    small_change: 0.1  # up to this value, remodulate the signals but do not discard spectral covariance matrices
+
+time:
+  chunk_len_seconds: 2.0  # chunks of fixed length
+
+cov_estimation:
+  use_sample_cov_est_for_noisy: true
+  use_rank1_model_for_oracle_cov_wet_estimation: true
+  noise_cov_est_len_seconds: 2.  # Time to estimate the noise covariance matrix
+  recursive_average: 1  # if true, use recursive averaging for the covariance matrices
+
+# room impulse response
+rir_specs:
+  # Randomly select RIRs from the Hadad dataset or use handpicked RIRs
+  # If you want to use handpicked RIRs, uncomment the common_path and target_path lines below and change the dataset_name to 'handpicked'.
+  datasets_path: ../datasets/
+  dataset_name: hadad  # hadad or handpicked
+  rir_len_seconds: 0.6
+  rt60: "0.610s"  # options: "0.160s", "0.610s", "any"
+  distance: "any"  # options: "1m", "2m", "any"
+  mic_spacing: "8-8-8-8-8-8-8"  # options: "3-3-3-8-3-3-3", "4-4-4-8-4-4-4", "8-8-8-8-8-8-8", "any"
+
+  # For handpicked RIRs, the following parameters are used:
+#  common_path:../datasets/ACE-corpus/Lin8Ch/
+#  target_path: Lecture_Room_1/1/Lin8Ch_508_1_RIR.wav
+#  noise_path: Lecture_Room_1/2/Lin8Ch_508_2_RIR.wav
+
+synthetic:
+  varying_parameters_names: [M, noise|snr_db_dir, cyclic|P_max, noise|harmonic_correlation]
+  metrics:
+    time: [ 'sisdr' ]
+  harmonics_est:
+    max_num_harmonics_peaks: 16
+  cov_estimation:
+    cov_est_forgetting_factor: 0.005 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
+
+synthetic_f0_err:
+  varying_parameters_names: [noise|inharmonicity_percentage]
+  metrics:
+    time: [ 'sisdr' ]
+  harmonics_est:
+    max_num_harmonics_peaks: 16
+    algo: oracle_f0 # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
+#    algo: oracle_all_harmonics # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
+  cov_estimation:
+    cov_est_forgetting_factor: 0.005 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
+
+  beamforming:
+    variants: [ 'blind' ]  # 'blind', 'semi-oracle', 'oracle'
+
+instruments:
+  varying_parameters_names: [noise|snr_db_dir, M, rir_specs|rt60, cyclic|P_max,]
+  metrics:
+    time: [ 'sisdr', 'stoi', 'pesq']
+  harmonics_est:
+    max_num_harmonics_peaks: 10
+  noise:
+    sig_type: sample
+    sample_name: 20_05_2025/
+  cov_estimation:
+    cov_est_forgetting_factor: 0.05 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
+
+plot_spectrograms:
+  varying_parameters_names: [noise|snr_db_dir]
+  metrics:
+    time: [ 'sisdr' ]
+  harmonics_est:
+    max_num_harmonics_peaks: 10
+  noise:
+    sig_type: sample
+    sample_name: 20_05_2025/cello-e2.wav
+  cov_estimation:
+    cov_est_forgetting_factor: 0.05 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
+
+demo:
+  num_montecarlo_simulations:  2
+  varying_parameters_names: [M, noise|snr_db_dir, cyclic|P_max, noise|harmonic_correlation]
+  varying_params_values:
+    M: [ 1, 2, 4 ]
+    noise|snr_db_dir: [ -20, -10, 0 ]
+    cyclic|P_max: [ 1, 2, 4, 8 ]
+    noise|harmonic_correlation: [ 0.0, 0.3, 0.5, 0.8 ]
+  cov_estimation:
+    cov_est_forgetting_factor: 0.005
+  cyclic:
+    P_max: 5
+  metrics:
+    time: [ 'sisdr' ]
+  stft:
+    nfft: 1024
+    overlap_fraction: 0.5
+  datasets_path: ./demo/
+  target:
+    sig_type: sample
+    sample_name: roy.wav
+    angle: None
+  harmonics_est:
+    max_num_harmonics_peaks: 6
+  rir_specs:
+    # Randomly select RIRs from the Hadad dataset or use handpicked RIRs
+    # If you want to use handpicked RIRs, uncomment the common_path and target_path lines below and change the dataset_name to 'handpicked'.
+    datasets_path: ./demo/rirs/
+    dataset_name: handpicked  # hadad or handpicked
+    rir_len_seconds: 0.6
+    rt60: "0.610s"  # options: "0.160s", "0.610s", "any"
+    distance: "any"  # options: "1m", "2m", "any"
+    mic_spacing: "8-8-8-8-8-8-8"  # options: "3-3-3-8-3-3-3", "4-4-4-8-4-4-4", "8-8-8-8-8-8-8", "any"
+
+    # For handpicked RIRs, the following parameters are used:
+    common_path: ./demo/
+    target_path: rir1.wav
+    noise_path: rir2.wav

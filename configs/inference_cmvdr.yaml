@@ -1,0 +1,80 @@
+## Description: Default configuration for inference with cyclic beamforming.
+seed_is_random: 0
+seed_if_not_random: 12345
+
+data_type: inference
+data_types_all: [inference]
+
+data:
+  input_dir: ../datasets/test_cmvdr/noisy
+  output_dir: ../datasets/test_cmvdr/noisy_output
+
+beamforming:
+  methods_dict:  # set everything to false to skip the computation of the covariance matrices and the beamforming
+    mvdr: true
+    cmvdr: true
+  variants: ['blind']
+  minimize_noisy_cov_mvdr: True
+  loadings:  # these values can make a lot of difference! Change with extreme care.
+    mvdr: [ 0, 0, 1000 ]  # min_load (not active 1.e-12), max_load (not active 1.e-1), max condition number (active)
+
+print_results: 1
+plot:
+  destination:                  'debug'  # alternatives are debug, slides, paper
+  destination_final_results:    'paper'  # debug, slides, paper
+  intermediate_results:         0
+  spectrograms:                 0
+  all_variations:               0
+  f0_spectrogram:               0
+  error_per_frequency:          0
+  separately:                   0
+  waveforms:            false
+
+fs: 16000
+
+M: 2  # number of microphones
+stft:
+    nfft: 2048
+    overlap_fraction: 0.75
+    win_name: 'hann'
+
+cov_estimation:
+  use_sample_cov_est_for_noisy: true
+  use_rank1_model_for_oracle_cov_wet_estimation: true
+  noise_cov_est_len_seconds: 2.  # Time to estimate the noise covariance matrix
+  recursive_average: 1  # if true, use recursive averaging for the covariance matrices
+  cov_est_forgetting_factor: 0.05 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
+
+cyclic:
+  freq_range_cyclic: [20, 2500]
+  max_relative_dist_from_harmonic: 1.675
+  P_max: 8
+  use_global_coherence: true
+  harmonic_threshold: 0.6
+  coherence_source_signal_name: noisy  # using noisy signal helps for high SNR
+
+harmonics_est:
+  algo: periodogram_all_harmonics # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
+  min_dist_hz: 20
+  max_ratio_from_highest_peak: 10000
+
+  # 2 ** 14 = 16384, 2 ** 15 = 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728
+  nfft: 131072
+  max_len_seconds: 2.
+  wait_len_seconds: 0.05  # offset before starting the estimation (avoid transient)
+  snr_db_relative: 100 # noise_freq_est: how much is sinusoidal signal stronger than white noise coming from same direction
+
+  source_signal_name: noisy
+  min_width: 1
+  min_prominence: 0
+
+  max_num_harmonics_peaks: 10  # maximum number of harmonics to estimate, if more are found, the rest is ignored
+
+metrics:
+  time: [ 'sisdr' , 'stoi' ]
+
+noise:
+  sig_type: sample
+
+target:
+  sig_type: sample

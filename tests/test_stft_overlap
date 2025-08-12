@@ -1,0 +1,34 @@
+"""
+Test new ShortTimeFFT class. Test if the STFT and ISTFT are consistent.
+"""
+
+# Build long random signal
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import chirp
+from scipy.signal import ShortTimeFFT
+import scipy.signal
+import zz_cyclic_beamforming.utils as u
+
+fs = 16000
+x_len = 1 * fs
+x = np.random.randn(x_len)
+x_r = np.zeros_like(x)
+t = np.arange(len(x)) / fs
+
+x1 = x[:int(x_len / 2)]
+x2 = x[int(x_len / 2):]
+
+stft = ShortTimeFFT(fs=fs, hop=170, mfft=512, win=scipy.signal.windows.hann(512))
+
+X1 = stft.stft(x1)
+X2 = stft.stft(x2)
+
+x1_r = stft.istft(X1, k0=0, k1=int(x_len / 2))
+x2_r = stft.istft(X2, k0=0, k1=int(x_len / 2))
+
+x_r[:int(x_len / 2)] = x1_r
+x_r[int(x_len / 2):] = x2_r
+
+u.plot([x, x_r], titles=['x', 'x_r'])
+print(f"{np.allclose(x, x_r)}")

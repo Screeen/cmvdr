@@ -1,0 +1,18 @@
+[project]
+name = "cmvdr"
+version = "0.1.0"
+description = "Cyclic minimum variance distortionless response beamformer"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "librosa>=0.11.0",
+    "matplotlib>=3.9.4",
+    "numpy>=2.0.2",
+    "pesq>=0.0.4",
+    "prettytable>=3.16.0",
+    "pysepm-evo>=0.1.1",
+    "pystoi>=0.4.1",
+    "pyyaml>=6.0.2",
+    "sounddevice>=0.5.2",
+    "srmrpy",
+]
