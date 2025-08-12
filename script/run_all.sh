@@ -1,15 +1,13 @@
-#!/bin/zsh
+#!/bin/bash
 
 # Get the directory where this script lives
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]:-${(%):-%x}}" )" && pwd )"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]:-$0}" )" && pwd )"
 
 # Project root = one folder up from script directory
 PROJECT_ROOT="$( dirname "$SCRIPT_DIR" )"
 
 # Change to the project root directory
-# This ensures that the script runs from the project root
-# and can find the main.py script and other resources correctly.
-cd "$PROJECT_ROOT"
+cd "$PROJECT_ROOT" || exit 1
 
 # Logs folder inside the project root
 LOG_DIR="$PROJECT_ROOT/log"
@@ -19,12 +17,17 @@ mkdir -p "$LOG_DIR"
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 
 # Activate the virtual environment
-source "$PROJECT_ROOT/.venv/bin/activate"
+if [ -f "$PROJECT_ROOT/.venv/bin/activate" ]; then
+  # shellcheck disable=SC1090
+  source "$PROJECT_ROOT/.venv/bin/activate"
+else
+  echo "Warning: virtualenv activate script not found at $PROJECT_ROOT/.venv/bin/activate"
+fi
 
 # Run the Python script and store logs in log/
 PYTHONUNBUFFERED=1 python "$PROJECT_ROOT/main.py" --data_type synthetic 2>&1 | tee "$LOG_DIR/synthetic_$TIMESTAMP.log"
-PYTHONUNBUFFERED=1 python "$PROJECT_ROOT/main.py" --data_type instruments 2>&1 | tee "$LOG_DIR/instruments$TIMESTAMP.log"
+PYTHONUNBUFFERED=1 python "$PROJECT_ROOT/main.py" --data_type instruments 2>&1 | tee "$LOG_DIR/instruments_$TIMESTAMP.log"
 
-# Wait for user before closing
-read -r "REPLY?Press enter to exit"
-
+# Wait for any single key press before closing
+read -n1 -s -r -p $'\nPress any key to exit...' KEY
+echo
