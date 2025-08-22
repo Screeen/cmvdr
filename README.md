@@ -16,31 +16,63 @@ especially in low signal-to-noise ratio (SNR) scenarios.
 ## Installation
 
 ### Prerequisites
-- Python 3.9 (for compatibility with librosa)
+- Python 3.9+ (for compatibility with librosa)
 - Tested on macOS 14.4.1 but should run on most Linux systems.
 
-### Setup
+### Method 1: Simple pip installation (Recommended)
+The package is now structured as a proper Python package and can be installed using pip:
+
 1. Clone the repository:
 ```bash
-   git clone git@github.com:Screeen/cmvdr.git
-   cd cmvdr
+git clone git@github.com:Screeen/cmvdr.git
+cd cmvdr
 ```
 
-2. Create and activate a Python virtual environment (assume `uv` and `python3.9` are installed):
+2. Create and activate a Python virtual environment:
 ```bash
-   uv venv -p python3.9 .venv
-   source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-3. Install required packages:
+3. Install the package in editable mode:
 ```bash
-   pip install --upgrade pip
-   uv sync  # requires the `uv` package for managing virtual environments
+pip install --upgrade pip
+pip install -e .
+```
+
+This will automatically install all dependencies defined in `pyproject.toml`.
+
+### Method 2: Using uv (For developers)
+If you prefer using `uv` for faster dependency management:
+
+1. Clone the repository:
+```bash
+git clone git@github.com:Screeen/cmvdr.git
+cd cmvdr
+```
+
+2. Create and activate a Python virtual environment:
+```bash
+uv venv -p python3.9 .venv
+source .venv/bin/activate
+```
+
+3. Install dependencies:
+```bash
+pip install --upgrade pip
+uv sync  # requires the `uv` package for managing virtual environments
 ```
 
 ---
 
 ## Testing the installation
+
+### Verify package installation
+After installation, verify that the package is properly installed:
+```bash
+python -c "import cmvdr; print('cMVDR package successfully imported!')"
+```
+
 ### Running the tests
 To verify the installation, run the provided tests:
 ```bash
@@ -55,12 +87,16 @@ source script/run_demo.sh
 
 ## Reproducing paper experiments
 
+**Note**: After installing the package with `pip install -e .`, you can run experiments directly from the repository root directory.
+
 ### Configurations
 Experiment parameters are controlled via YAML files in the `configs/` folder. Edit `cmvdr.yaml` and `default.yaml` 
 to set your desired parameters such as:
 - `data_type` (choose from `synthetic` or `instruments`)
 - `num_montecarlo_simulations`
 - ... 
+
+### Running experiments
 
 #### Run synthetic data experiments:
   ```bash
@@ -72,13 +108,21 @@ to set your desired parameters such as:
 source script/run_all.sh
 ```
 
+#### Or run the main experiment script directly:
+```bash
+python main.py --data_type synthetic  # or instruments
+```
+
 ## Get cMVDR output for your own audio files (inference)
 To apply the cMVDR beamformer to your own audio files, you can use the inference script.
 This script processes audio files in a specified folder and saves the output to another folder.
+
+After installing the package, run:
 ```bash
 python -m script.cmvdr_inference
 ```
-Specify the folder containing audio files in the `config/cmvdr_inference.yaml` YAML file:
+
+Specify the folder containing audio files in the `configs/inference_cmvdr.yaml` YAML file:
 ```yaml
 data:
   input_dir: ../datasets/test_cmvdr/noisy
@@ -114,12 +158,24 @@ from scipy.signal import firls,upfirdn
 from scipy.signal.windows import kaiser
 ```
 
-### UV is not installed
-`pip` can install directly from the `pyproject.toml`:
+### Installing without uv
+If you don't have `uv` installed or prefer using standard pip, use Method 1 above or:
 ```bash
 python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate  
 pip install --upgrade pip
-pip install .
+pip install -e .  # Use -e for editable installation
+```
+
+### Package import issues after installation
+If you installed the package with `pip install -e .` and have import issues, make sure:
+1. Your virtual environment is activated
+2. You're running Python from the correct environment
+3. The installation completed without errors
+
+You can verify the package is installed by running:
+```bash
+pip list | grep cmvdr
 ```
 
 ### OSError: PortAudio library not found
