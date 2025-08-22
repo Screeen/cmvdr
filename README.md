@@ -22,8 +22,8 @@ especially in low signal-to-noise ratio (SNR) scenarios.
 ### Setup
 1. Clone the repository:
 ```bash
-   git clone git@github.com:Screeen/cMVDR.git
-   cd cMVDR
+   git clone git@github.com:Screeen/cmvdr.git
+   cd cmvdr
 ```
 
 2. Create and activate a Python virtual environment (assume `uv` and `python3.9` are installed):
