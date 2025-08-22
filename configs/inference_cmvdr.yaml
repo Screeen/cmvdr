@@ -11,7 +11,7 @@ data:
 
 beamforming:
   methods_dict:  # set everything to false to skip the computation of the covariance matrices and the beamforming
-    mvdr: true
+    mvdr: false
     cmvdr: true
   variants: ['blind']
   minimize_noisy_cov_mvdr: True
@@ -19,16 +19,6 @@ beamforming:
     mvdr: [ 0, 0, 1000 ]  # min_load (not active 1.e-12), max_load (not active 1.e-1), max condition number (active)
 
 print_results: 1
-plot:
-  destination:                  'debug'  # alternatives are debug, slides, paper
-  destination_final_results:    'paper'  # debug, slides, paper
-  intermediate_results:         0
-  spectrograms:                 0
-  all_variations:               0
-  f0_spectrogram:               0
-  error_per_frequency:          0
-  separately:                   0
-  waveforms:            false
 
 fs: 16000
 
@@ -69,9 +59,6 @@ harmonics_est:
   min_prominence: 0
 
   max_num_harmonics_peaks: 10  # maximum number of harmonics to estimate, if more are found, the rest is ignored
-
-metrics:
-  time: [ 'sisdr' , 'stoi' ]
 
 noise:
   sig_type: sample
