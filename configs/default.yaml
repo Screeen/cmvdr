@@ -17,6 +17,7 @@ plot:
   f0_spectrogram:               0
   error_per_frequency:          0
   separately:                   0
-  waveforms:            false
+  waveforms:             false
+  force_no_tex:          false  # set to true if you do not have Tex installed for the plots
 
 fs: 16000

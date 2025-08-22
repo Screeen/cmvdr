@@ -26,8 +26,11 @@ colors = ['tab:blue', 'tab:orange', 'tab:brown', 'tab:red', 'tab:brown', 'tab:pu
 # TODO: add entry for 'standard error' in legend
 
 
-def is_tex_plotting_available():
+def is_tex_plotting_available(force_no_tex=False):
     """ Check if LaTeX is available for plotting with matplotlib. """
+    if force_no_tex:
+        return False
+
     import subprocess
     try:
         result = subprocess.run(['kpsewhich', 'type1cm.sty'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -345,7 +348,7 @@ def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, pr
     plot_sett_['show_title'] = False if plot_sett_['destination'] == 'paper' else True
     plot_sett_['target_folder_path'] = target_path_figs_
 
-    tex_available = is_tex_plotting_available()
+    tex_available = is_tex_plotting_available(plot_sett_['force_no_tex'])
     u.set_plot_options(use_tex=plot_sett_['use_tex'] and tex_available)
 
     plot_sett_['save_plots'] = False if cfg['num_montecarlo_simulations'] <= 1 else plot_sett_['save_plots']

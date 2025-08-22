@@ -192,3 +192,5 @@ demo:
     common_path: ./demo/
     target_path: rir1.wav
     noise_path: rir2.wav
+  plot:
+    force_no_tex: True
