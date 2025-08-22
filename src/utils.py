@@ -13,9 +13,6 @@ import soundfile
 from matplotlib import pyplot as plt, ticker
 from scipy.ndimage import uniform_filter1d
 from src import globs as gs
-if gs.rng is None:
-    raise ValueError("Global random number generator is not initialized. "
-                        "Call compute_rng() before using this module.")
 
 
 eps = np.finfo(float).eps
@@ -623,10 +620,17 @@ def load_audio_file_random_offset(sample_path, fs, duration_samples=-1, offset_s
             break
     return x, fs
 
+def check_random_seed():
+    if gs.rng is None:
+        raise ValueError("Global random number generator is not initialized. "
+                         "Call compute_rng() before using this module.")
+
 
 def load_audio_file(audio_file_path, fs_, N_num_samples=-1, offset_seconds=None, smoothing_window=False,
                     threshold=1e-2):
     # Load audio file and return signal and sampling frequency
+
+    check_random_seed()
 
     if not os.path.exists(audio_file_path):
         raise ValueError(f"{audio_file_path = } does not exist.")
