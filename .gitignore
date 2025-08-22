@@ -192,3 +192,4 @@ cython_debug/
 
 /figs/*
 /demo/noisy_output/*
+.idea
