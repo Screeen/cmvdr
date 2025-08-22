@@ -25,16 +25,49 @@ class CyclicMVDR(Beamformer):
         self.noise_var_rtf = noise_var_rtf
 
     def compute_mvdr_beamformers(self, cov_input_nb, cov_noise_nb, which_variant='blind', speech_rtf_oracle=np.array([])):
+        """
+        Compute the weights for the MVDR beamformer.
+        Parameters
+        ----------
+        cov_input_nb : (K, M, M) array_like
+            Narrowband covariance matrices of the input signal.
+        cov_noise_nb : (K, M, M) array_like
+            Narrowband covariance matrices of the noise signal.
+        which_variant : str
+            Variant of the MVDR beamformer to use. Options are 'blind', 'semi-oracle', 'oracle'.
+        speech_rtf_oracle : (K, M) array_like, optional
+            Oracle relative transfer functions (RTFs) of the speech signal. Required if which_variant is 'oracle' or 'semi-oracle'.
+        Returns
+        -------
+        weights_mvdr : (M, K) ndarray
+            MVDR beamforming weights.
+        error_flag : (K,) ndarray
+            Error flags for each frequency bin.
+        cond_num_cov : (K,) ndarray
+            Condition numbers of the covariance matrices for each frequency bin.
+        singular_values : (K, M) ndarray
+            Singular values of the covariance matrices for each frequency bin.
+        Notes
+        -----
+        The MVDR beamformer minimizes the output power while maintaining a distortionless response in the direction
+        of the desired signal. The beamforming weights are computed using the covariance matrices of the input
+        and noise signals, as well as the relative transfer functions (RTFs) of the desired signal.
+        The 'blind' variant estimates the RTFs using the generalized eigenvalue decomposition (GEVD) of the covariance matrices.
+        """
 
         # which_variant: 'blind', 'semi-oracle', 'oracle'
         K_nfft, M = cov_input_nb.shape[:2]
         weights_mvdr = np.zeros((M, K_nfft), dtype=np.complex128)
         error_flag = np.zeros(K_nfft, dtype=bool)
+        cond_num_cov = np.zeros(K_nfft)
+        singular_values = np.zeros((K_nfft, M))
+
+        if M == 1:  # Single-channel case: no beamforming needed
+            weights_mvdr[0, :] = 1
+            return weights_mvdr, error_flag, cond_num_cov, singular_values
 
         loading_mat = np.eye(M)
         loadings = self.get_loading_nb(which_variant, cov_input_nb, *self.loadings_cfg)
-        cond_num_cov = np.zeros(K_nfft)
-        singular_values = np.zeros((K_nfft, M))
 
         # MVDR beamformer (narrowband)
         for kk in range(K_nfft):
@@ -227,6 +260,9 @@ class CyclicMVDR(Beamformer):
 
     def check_if_rtf_needs_estimation(self, idx_chunk=0, warmup_chunks=Beamformer.rtf_est_warmup_chunks,
                                       interval_chunks=Beamformer.rtf_est_interval_chunks):
+        """ Check if RTF needs to be estimated for the current chunk."""
+        if self.rtf_est.shape[1] == 1:  # Single-channel case: no RTF estimation needed
+            return np.zeros_like(self.rtf_needs_estimation)
         if idx_chunk < warmup_chunks or (interval_chunks > 0 and idx_chunk % interval_chunks == 0):
             return np.ones_like(self.rtf_needs_estimation)
         return np.zeros_like(self.rtf_needs_estimation)

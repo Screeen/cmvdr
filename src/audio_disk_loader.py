@@ -49,7 +49,8 @@ class AudioDiskLoader:
         print(f"Saved audio to {output_file}")
 
     @staticmethod
-    def save_audio_files(signals_dict_all_variations_time, output_folder, fs):
+    def save_audio_files(signals_dict_all_variations_time, output_folder, fs,
+                         export_list=None):
         """
         Save audio files from a dictionary of signals to a specified output folder.
         :param signals_dict_all_variations_time: Dictionary containing audio signals.
@@ -62,11 +63,14 @@ class AudioDiskLoader:
         if not isinstance(output_folder, (str, Path)):
             raise ValueError("output_folder must be a string or a Path object.")
 
+        if export_list is None:
+            export_list = list(signals_dict_all_variations_time.keys())
+
         output_folder = Path(output_folder).expanduser().resolve()
         output_folder.mkdir(parents=True, exist_ok=True)
         for name, signals in signals_dict_all_variations_time.items():
             for key, audio in signals.items():
-                if key != 'noise_cov_est':
+                if key != 'noise_cov_est' and key in export_list:
                     # Save the audio file only if it is not noise_cov_est
                     name_no_ext = Path(name).stem  # Remove file extension
                     output_file = output_folder / f"{name_no_ext}_{key}.wav"

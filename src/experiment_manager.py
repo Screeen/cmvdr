@@ -461,4 +461,4 @@ class ExperimentManager:
             signals_dict_all_variations_time[name] = {key: dcopy(signals[key]['time']) for key in signals.keys()}
 
         audio_loader.AudioDiskLoader.save_audio_files(
-            signals_dict_all_variations_time, output_folder, fs=cfg['fs'])
+            signals_dict_all_variations_time, output_folder, fs=cfg['fs'], export_list=['cmvdr_blind'])
