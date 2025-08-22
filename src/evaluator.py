@@ -4,7 +4,6 @@ import warnings
 import numpy as np
 import pystoi
 from matplotlib import pyplot as plt
-from prettytable import PrettyTable
 
 from . import utils as u
 from . import plotter as pl
@@ -200,6 +199,7 @@ class Evaluator:
         if not results_dict:
             return
 
+        from prettytable import PrettyTable
         table = PrettyTable()
         metric_names = list(results_dict.keys())
         algo_names = list(results_dict[metric_names[0]].keys())

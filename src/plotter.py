@@ -6,7 +6,6 @@ import numpy as np
 from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tck
-from prettytable import PrettyTable
 
 from . import utils as u
 from . import config
@@ -362,6 +361,7 @@ def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, pr
         # Print in table format the same data we would have in the plot
         if print_full_table:
             # Create and print the table
+            from prettytable import PrettyTable
             table = PrettyTable()
             pretty_param_name = get_parameter_display_name(plot_args_['parameter_to_vary'])
             table.field_names = ([pretty_param_name] +

@@ -437,14 +437,15 @@ class ExperimentManager:
         signals_dict_all_variations_time = {}
         f0man = f0_manager.F0Manager()
 
-        for waveform, audio_stft, name in zip(audio_list, audio_list_stft, names):
+        for waveform, audio_stft, name in tqdm(audio_list, audio_list_stft, names):
 
             signals = {'noisy': {'stft': np.asarray(audio_stft)[np.newaxis], 'time': np.asarray(waveform)[np.newaxis]}}
+            signals['noisy']['stft_conj'] = np.conj(signals['noisy']['stft'])
 
             # Estimate resonant frequencies from the noisy signal
             harmonic_freqs_est, crb_dict, f0_over_time = f0man.estimate_f0_or_resonant_freqs(signals, cfg, dft_props)
 
-            print("Debug: using noisy signal as noise_cov_est for estimating noise covariance.")
+            # print("Debug: using noisy signal as noise_cov_est for estimating noise covariance.")
             signals['noise_cov_est'] = signals['noisy']
 
             bfd_stft_inference = self.run_cov_estimation_beamforming(signals=signals, f0man=f0man,

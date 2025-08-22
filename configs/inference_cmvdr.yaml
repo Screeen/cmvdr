@@ -6,8 +6,8 @@ data_type: inference
 data_types_all: [inference]
 
 data:
-  input_dir: ./demo/noisy
-  output_dir: ./demo/noisy_output
+  input_dir: /space/giovanni/cmvdr-dnn/dns_challenge/datasets/dev/test/noisy
+  output_dir: /space/giovanni/cmvdr-dnn/dns_challenge/datasets/dev/test_output/
 
 beamforming:
   methods_dict:  # set everything to false to skip the computation of the covariance matrices and the beamforming
@@ -42,7 +42,7 @@ cov_estimation:
   use_sample_cov_est_for_noisy: true
   use_rank1_model_for_oracle_cov_wet_estimation: true
   noise_cov_est_len_seconds: 2.  # Time to estimate the noise covariance matrix
-  recursive_average: 1  # if true, use recursive averaging for the covariance matrices
+  recursive_average: 0  # if true, use recursive averaging for the covariance matrices
   cov_est_forgetting_factor: 0.05 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
 
 cyclic:
