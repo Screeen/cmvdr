@@ -70,7 +70,7 @@ uv sync  # requires the `uv` package for managing virtual environments
 ### 🔍 Verify package installation
 After installation, verify that the package is properly installed:
 ```bash
-python -c "import cmvdr; print('cMVDR package successfully imported!')"
+python -c 'import cmvdr; print("cMVDR package successfully imported!")'
 ```
 
 ### 🧪 Running the tests
