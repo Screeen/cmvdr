@@ -20,7 +20,7 @@ especially in low signal-to-noise ratio (SNR) scenarios.
 - Tested on macOS 14.4.1 but should run on most Linux systems.
 
 ### Method 1: Simple pip installation (Recommended)
-The package is now structured as a proper Python package and can be installed using pip:
+The package is structured as a proper Python package and can be installed using pip:
 
 1. Clone the repository:
 ```bash
