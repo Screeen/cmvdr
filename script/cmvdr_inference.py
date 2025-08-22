@@ -27,7 +27,7 @@ if output_dir := data.get('output_dir'):
     output_dir = Path(output_dir).expanduser().resolve()
 
 em = experiment_manager.ExperimentManager()
-em.run_cmvdr_inference_folder(input_folder=input_dir, output_folder=output_dir, cfg=cfg_original,)
+em.run_cmvdr_inference_folder(input_path=input_dir, cfg=cfg_original, output_path=output_dir)
 
 # if OS is macOS, open the output folder
 if output_dir and output_dir.exists() and output_dir.is_dir():

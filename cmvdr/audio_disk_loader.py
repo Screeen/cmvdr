@@ -17,20 +17,32 @@ class AudioDiskLoader:
         pass
 
     @staticmethod
-    def load_audio_files(directory, fs=None):
+    def load_audio_files(path, fs=None):
         """
         Load audio files from a specified directory.
-        :param directory: Path to the directory containing audio files.
+        :param path: Path to the directory containing audio files or a single audio file.
         :param fs: Sampling frequency to resample the audio files. If None, uses the
             original sampling frequency of the audio files.
         :return: A tuple containing a list of audio data (numpy arrays) and a list of filenames.
         """
 
+        if not isinstance(path, (str, Path)):
+            raise ValueError("path must be a string or a Path object.")
+
+        path = Path(path).expanduser().resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"The specified path does not exist: {path}")
+
+        if path.is_file():
+            # If the path is a file, load that single audio file
+            data, sample_rate = librosa.load(path, sr=fs, mono=False)
+            return [data], [path.name]
+
         audio_list = []
         names = []
-        for filename in os.listdir(directory):
+        for filename in os.listdir(path):
             if filename.endswith('.wav'):
-                filepath = os.path.join(directory, filename)
+                filepath = os.path.join(path, filename)
                 data, sample_rate = librosa.load(filepath, sr=fs, mono=False)
                 audio_list.append(data)
                 names.append(filename)

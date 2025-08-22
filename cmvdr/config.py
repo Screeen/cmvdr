@@ -208,10 +208,11 @@ def get_varying_param_values(configuration: dict, parameter_to_vary: str):  # ->
     return varying_param_values
 
 
-def load_configuration(cfg_name=None):
+def load_configuration(cfg_name=None, verbose=True):
     """ Load configuration file """
 
-    print(f"Loading configuration file: {cfg_name}")
+    if verbose:
+        print(f"Loading configuration file: {cfg_name}")
     cfg_path = config_folder_source / cfg_name
     cfg_custom = load_configuration_from_path(cfg_path)
     return cfg_custom

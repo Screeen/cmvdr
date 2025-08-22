@@ -4,6 +4,36 @@ version = "0.1.0"
 description = "Cyclic minimum variance distortionless response beamformer"
 readme = "README.md"
 requires-python = ">=3.9"
+authors = [
+  {name = "Giovanni Bologni", email = "giovannibologni@gmail.com"},
+]
+maintainers = [
+  {name = "Giovanni Bologni", email = "giovannibologni@gmail.com"},
+]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = [
+    "beamforming",
+    "cmvdr",
+    "mvdr",
+    "cyclic",
+    "distortionless",
+    "minimum variance",
+    "signal processing",
+    "audio processing",
+    "speech enhancement",
+    "spatial filtering",
+    "array processing",
+    "acoustic signal processing",
+    "array signal processing",
+    "direction of arrival",
+    "doa",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Signal Processing",
+]
 dependencies = [
     "librosa>=0.11.0",
     "matplotlib>=3.9.4",
@@ -26,3 +56,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["cmvdr*"]
+
+[project.scripts]
+cmvdr = "cmvdr.cli.cmvdr_inference_cli:main"

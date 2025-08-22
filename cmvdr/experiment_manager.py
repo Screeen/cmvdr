@@ -416,13 +416,17 @@ class ExperimentManager:
 
         return ret
 
-    def run_cmvdr_inference_folder(self, input_folder, output_folder, cfg):
+    def run_cmvdr_inference_folder(self, input_path, cfg, output_path=None, verbose=True):
         """
         Run cMVDR inference on a given dataset (folder) and save the beamformed output to a specified output folder.
         This method loads audio files from the input folder, applies cMVDR beamforming, and
         saves the results to the output folder.
-        :param input_folder: Path to the folder containing input audio files.
-        :param output_folder: Path to the folder where output audio files will be saved.
+        :param input_path: Path to the folder containing input audio files or to a single audio file.
+        If a single audio file is provided, it will be treated as a dataset with one audio file.
+        If a folder is provided, all audio files in the folder will be processed.
+        If the input path is a file, it should be a valid audio file (e.g , .wav).
+        If the input path is a folder, it should contain audio files.
+        :param output_path: Path to the folder where output audio files will be saved.
         :param cfg: Configuration dictionary containing parameters for the experiment.
         """
 
@@ -430,7 +434,7 @@ class ExperimentManager:
         dg = DataGenerator()
         SFT, SFT_real, freqs_hz = dg.get_stft_objects(dft_props)
 
-        audio_list, names = audio_loader.AudioDiskLoader().load_audio_files(input_folder)
+        audio_list, names = audio_loader.AudioDiskLoader().load_audio_files(input_path)
         audio_list_stft = [SFT_real.stft(x) for x in audio_list]
 
         # results_dict = {}
@@ -440,7 +444,9 @@ class ExperimentManager:
 
         for waveform, audio_stft, name in tqdm(
                 zip(audio_list, audio_list_stft, names),
-                total=len(audio_list)
+                total=len(audio_list),
+                desc="Processing audio files",
+                disable=not verbose
         ):
 
             signals = {'noisy': {'stft': np.asarray(audio_stft)[np.newaxis], 'time': np.asarray(waveform)[np.newaxis]}}
@@ -465,5 +471,13 @@ class ExperimentManager:
             # Store audio signals for all param_values and montecarlo realizations to listen to them later
             signals_dict_all_variations_time[name] = {key: dcopy(signals[key]['time']) for key in signals.keys()}
 
+        # Save the beamformed audio files to the output folder
+        if output_path is None:
+            if input_path.is_file():
+                output_path = Path(input_path).parent
+            else:
+                # If it is a directory, use a directory with the same name and "_cmvdr" suffix
+                output_path = Path(input_path).with_name(Path(input_path).name + '_cmvdr')
+
         audio_loader.AudioDiskLoader.save_audio_files(
-            signals_dict_all_variations_time, output_folder, fs=cfg['fs'], export_list=['cmvdr_blind'])
+            signals_dict_all_variations_time, output_path, fs=cfg['fs'], export_list=['cmvdr_blind'])
