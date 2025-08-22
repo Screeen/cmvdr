@@ -13,13 +13,13 @@ especially in low signal-to-noise ratio (SNR) scenarios.
 
 ---
 
-## Installation
+## 📦 Installation
 
-### Prerequisites
+### 📋 Prerequisites
 - Python 3.9+ (for compatibility with librosa)
 - Tested on macOS 14.4.1 but should run on most Linux systems.
 
-### Method 1: Simple pip installation (Recommended)
+### 1️⃣ Method 1: Simple pip installation (Recommended)
 The package is structured as a proper Python package and can be installed using pip:
 
 1. Clone the repository:
@@ -42,7 +42,7 @@ pip install -e .
 
 This will automatically install all dependencies defined in `pyproject.toml`.
 
-### Method 2: Using uv (For developers)
+### 2️⃣ Method 2: Using uv (For developers)
 If you prefer using `uv` for faster dependency management:
 
 1. Clone the repository:
@@ -65,55 +65,55 @@ uv sync  # requires the `uv` package for managing virtual environments
 
 ---
 
-## Testing the installation
+## ✅ Testing the installation
 
-### Verify package installation
+### 🔍 Verify package installation
 After installation, verify that the package is properly installed:
 ```bash
 python -c "import cmvdr; print('cMVDR package successfully imported!')"
 ```
 
-### Running the tests
+### 🧪 Running the tests
 To verify the installation, run the provided tests:
 ```bash
 python -m unittest discover -s tests
 ```
 
-### Running the quick demo
+### 🚀 Running the quick demo
 To quickly test the cMVDR implementation, run the demo script:
 ```bash
 source script/run_demo.sh
 ```
 
-## Reproducing paper experiments
+## 🧪 Reproducing paper experiments
 
-**Note**: After installing the package with `pip install -e .`, you can run experiments directly from the repository root directory.
+**📝 Note**: After installing the package with `pip install -e .`, you can run experiments directly from the repository root directory.
 
-### Configurations
+### ⚙️ Configurations
 Experiment parameters are controlled via YAML files in the `configs/` folder. Edit `cmvdr.yaml` and `default.yaml` 
 to set your desired parameters such as:
 - `data_type` (choose from `synthetic` or `instruments`)
 - `num_montecarlo_simulations`
 - ... 
 
-### Running experiments
+### ▶️ Running experiments
 
-#### Run synthetic data experiments:
+#### 🔬 Run synthetic data experiments:
   ```bash
   source script/run_synthetic.sh
   ```
 
-#### Run all experiments (synthetic and instruments):
+#### 🎯 Run all experiments (synthetic and instruments):
 ```bash
 source script/run_all.sh
 ```
 
-#### Or run the main experiment script directly:
+#### ⚡ Or run the main experiment script directly:
 ```bash
 python main.py --data_type synthetic  # or instruments
 ```
 
-## Get cMVDR output for your own audio files (inference)
+## 🎵 Get cMVDR output for your own audio files (inference)
 To apply the cMVDR beamformer to your own audio files, you can use the inference script.
 This script processes audio files in a specified folder and saves the output to another folder.
 
@@ -129,7 +129,7 @@ data:
   output_dir: ../datasets/test_cmvdr/noisy_output
 ```
 
-### Notes
+### 📝 Notes
 Synthetic data experiments require downloading room impulse responses (RIRs) and clean speech:
 - RIRs: https://www.iks.rwth-aachen.de/en/research/tools-downloads/databases/multi-channel-impulse-response-database/
 - Speech: Speech Intelligibility CD by Neil Thompson Shade
@@ -137,9 +137,9 @@ Synthetic data experiments require downloading room impulse responses (RIRs) and
 Instrument data experiments also require downloading instrument samples:
 - Instrument samples:  https://theremin.music.uiowa.edu/MIS.html.
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
-### Cannot import `kaiser` from `scipy.signal`
+### ⚠️ Cannot import `kaiser` from `scipy.signal`
 If you get
 ```
 ImportError: cannot import name 'kaiser' from 'scipy.signal' (.../.venv/lib/python3.X/site-packages/scipy/signal/__init__.py). Did you mean: 'kaiserord'?
@@ -158,7 +158,7 @@ from scipy.signal import firls,upfirdn
 from scipy.signal.windows import kaiser
 ```
 
-### Installing without uv
+### 🔄 Installing without uv
 If you don't have `uv` installed or prefer using standard pip, use Method 1 above or:
 ```bash
 python3 -m venv .venv
@@ -167,7 +167,7 @@ pip install --upgrade pip
 pip install -e .  # Use -e for editable installation
 ```
 
-### Package import issues after installation
+### 📦 Package import issues after installation
 If you installed the package with `pip install -e .` and have import issues, make sure:
 1. Your virtual environment is activated
 2. You're running Python from the correct environment
@@ -178,12 +178,12 @@ You can verify the package is installed by running:
 pip list | grep cmvdr
 ```
 
-### OSError: PortAudio library not found
+### 🔊 OSError: PortAudio library not found
 Your Python package (`sounddevice` or something else that uses PortAudio) can’t find the underlying PortAudio C library on your system.
 Installing the Python package alone isn’t enough — the native library must also be installed.
 How you fix it depends on your OS. You can still run the experiments, but you won't be able to listen to the audio output.
 
-### ImportError: numpy.core.multiarray
+### ❗ ImportError: numpy.core.multiarray
 ```
 ImportError: numpy.core.multiarray failed to import (auto-generated because you didn't call 'numpy.import_array()' after cimporting numpy; use '<void>numpy._import_array' to disable if you are certain you don't need it).
 -bash: read: `REPLY?Press enter to exit': not a valid identifier
