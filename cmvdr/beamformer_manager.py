@@ -179,6 +179,7 @@ class BeamformerManager:
         # noisy_stft is always provided in full
         L3_num_frames = min(slice_frames.stop - slice_frames.start, noisy_stft.shape[-1] - slice_frames.start)
         K_nfft_real = noisy_stft.shape[1]
+        use_local_coherence = np.any(self.harmonic_info.harmonic_sets_before_coh)
 
         if K_nfft_real % 2 == 0:
             warnings.warn(f"{K_nfft_real = }, but it is given by K // 2 + 1 which is an odd number. Check the STFT parameters.")
@@ -190,6 +191,7 @@ class BeamformerManager:
             if bf_name not in weights:
                 continue
 
+            is_widely_linear_bf = 'wl' in bf_name
             is_narrowband = self.is_narrowband_beamformer(bf_name)
             bfd_stft = np.zeros((K_nfft_real, L3_num_frames), dtype=np.complex128, order='F')
             M = noisy_stft.shape[0]
@@ -204,7 +206,7 @@ class BeamformerManager:
                 # Based on that, we select the corresponding weights and apply them to the modulated signals.
                 for kk in range(K_nfft_real):
                     harmonic_set_idx, P = self.harmonic_info.get_harmonic_set_and_num_shifts(kk)
-                    if np.any(self.harmonic_info.harmonic_sets_before_coh):  # local coherence filtering only
+                    if use_local_coherence:  # local coherence filtering only
                         harmonic_set_idx, _ = self.harmonic_info.get_harmonic_set_and_num_shifts(kk, before_coherence=True)
 
                     # If fundamental frequency is changing, ignore harmonic components when beamforming
@@ -215,7 +217,7 @@ class BeamformerManager:
                     sel_signal = harmonic_set_idx, slice(M * P), kk, slice_frames
                     sel_weights = slice(M * P), kk
                     processed_sig = noisy_mod_stft_3d[sel_signal]
-                    if 'wl' in bf_name and P > 1:
+                    if is_widely_linear_bf and P > 1:
                         sel_weights = slice(M * P * 2), kk
                         processed_sig = np.concatenate((noisy_mod_stft_3d[sel_signal],
                                                         np.conj(noisy_mod_stft_3d)[sel_signal]))

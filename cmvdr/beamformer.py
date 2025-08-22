@@ -57,7 +57,7 @@ class Beamformer:
             P = P_all_freqs[kk] if P_all_freqs.size > 0 else 1
             MP = int(M * P)
             eigenvalues = np.linalg.eigvalsh(cov_wb[kk, :MP, :MP])
-            smallest_eigenvalue = max(eigenvalues[0], 0)
+            smallest_eigenvalue = np.maximum(eigenvalues[0], eps)
             loadings[kk] = (eigenvalues[-1] - condition_number * smallest_eigenvalue) / (condition_number - 1)
         loadings = np.maximum(eps, loadings)
 
