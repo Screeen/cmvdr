@@ -4,6 +4,7 @@ import time
 from copy import deepcopy as dcopy
 from pathlib import Path
 from datetime import datetime
+from tqdm import tqdm
 
 from src import config
 from src.data_generator import DataGenerator
@@ -437,7 +438,10 @@ class ExperimentManager:
         signals_dict_all_variations_time = {}
         f0man = f0_manager.F0Manager()
 
-        for waveform, audio_stft, name in tqdm(audio_list, audio_list_stft, names):
+        for waveform, audio_stft, name in tqdm(
+                zip(audio_list, audio_list_stft, names),
+                total=len(audio_list)
+        ):
 
             signals = {'noisy': {'stft': np.asarray(audio_stft)[np.newaxis], 'time': np.asarray(waveform)[np.newaxis]}}
             signals['noisy']['stft_conj'] = np.conj(signals['noisy']['stft'])
