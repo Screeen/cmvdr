@@ -13,6 +13,9 @@ import soundfile
 from matplotlib import pyplot as plt, ticker
 from scipy.ndimage import uniform_filter1d
 from src import globs as gs
+if gs.rng is None:
+    raise ValueError("Global random number generator is not initialized. "
+                        "Call compute_rng() before using this module.")
 
 
 eps = np.finfo(float).eps

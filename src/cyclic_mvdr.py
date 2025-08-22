@@ -4,7 +4,6 @@ import warnings
 import copy
 import src.utils as u
 from src.beamformer import Beamformer
-from src.covariance_holder import CovarianceHolder
 
 eps = 1e-15
 
@@ -68,10 +67,11 @@ class CyclicMVDR(Beamformer):
 
         loading_mat = np.eye(M)
         loadings = self.get_loading_nb(which_variant, cov_input_nb, *self.loadings_cfg)
+        rtf_oracle_available = np.any(speech_rtf_oracle) and speech_rtf_oracle is not None and speech_rtf_oracle.size > 0
 
         # MVDR beamformer (narrowband)
         for kk in range(K_nfft):
-            speech_rtf_oracle_kk = speech_rtf_oracle[kk] if np.any(speech_rtf_oracle) else None
+            speech_rtf_oracle_kk = speech_rtf_oracle[kk] if rtf_oracle_available else None
             cov_nb_kk = cov_input_nb[kk] if self.minimize_noisy_cov_mvdr else cov_noise_nb[kk]
             rtf = self.estimate_rtf_or_get_oracle_mvdr(cov_input_nb[kk], cov_noise_nb[kk], speech_rtf_oracle_kk,
                                                        which_variant, kk)
@@ -122,6 +122,9 @@ class CyclicMVDR(Beamformer):
         The 'blind' variant estimates the RTFs using the generalized eigenvalue decomposition (GEVD) of the covariance matrices.
         """
 
+        if self.harmonic_info is None:
+            raise ValueError("harmonic_info must be set before calling compute_cyclic_mvdr_beamformers")
+
         cov_input_wb = cov_dict[name_input_sig+'_wb']
         cov_input_nb = cov_dict[name_input_sig+'_nb']
         cov_noise_wb = cov_dict['noise_wb']
@@ -131,6 +134,7 @@ class CyclicMVDR(Beamformer):
         P_max = cov_input_wb.shape[-1] // M
         P_all = self.harmonic_info.get_num_shifts_all_frequencies()
         loadings = self.get_loading_wb(cov_input_wb, *self.loadings_cfg, P_all, M=M)
+        rtf_oracle_available = np.any(speech_rtf_oracle) and speech_rtf_oracle is not None and speech_rtf_oracle.size > 0
 
         eye_wb = np.eye(M * P_max)
         eye_nb = np.eye(M)
@@ -148,7 +152,7 @@ class CyclicMVDR(Beamformer):
         # MVDR beamformer for non-cyclic bins (# Fall back to MVDR for the non-harmonic bins)
         if M > 1:
             for kk in non_cyclic_bins:
-                speech_rtf_oracle_kk = speech_rtf_oracle[kk] if np.any(speech_rtf_oracle) else None
+                speech_rtf_oracle_kk = speech_rtf_oracle[kk] if rtf_oracle_available else None
                 rtf = self.estimate_rtf_or_get_oracle_mvdr(cov_input_nb[kk], cov_noise_nb[kk], speech_rtf_oracle_kk,
                                                            which_variant, kk)
                 cov_kk = cov_input_nb[kk] if self.minimize_noisy_cov_mvdr else cov_noise_nb[kk]
@@ -161,7 +165,7 @@ class CyclicMVDR(Beamformer):
         # cMVDR beamformer
         for kk in cyclic_bins:
             P = P_all[kk] if P_all.size > 0 else 1
-            speech_rtf_oracle_kk = speech_rtf_oracle[kk] if np.any(speech_rtf_oracle) else None
+            speech_rtf_oracle_kk = speech_rtf_oracle[kk] if rtf_oracle_available else None
             rtf = self.estimate_rtf_or_get_oracle_mvdr(cov_input_nb[kk], cov_noise_nb[kk], speech_rtf_oracle_kk,
                                                        which_variant, kk)
 
@@ -179,8 +183,8 @@ class CyclicMVDR(Beamformer):
                 cov_wb_kk_inv_rtf = scipy.linalg.solve(
                     cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P],
                     rtf_padded[:M * P], assume_a='pos')
-            weights[:M * P, kk] = cov_wb_kk_inv_rtf / (np.conj(rtf_padded).T @ cov_wb_kk_inv_rtf).real
 
+            weights[:M * P, kk] = cov_wb_kk_inv_rtf / (np.conj(rtf_padded).T @ cov_wb_kk_inv_rtf).real
             # cond_num_cov[kk] = np.linalg.cond(cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P])
             # singular_values[kk, :M * P] = np.linalg.svd(cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P],
             #                                             compute_uv=False)
@@ -190,6 +194,9 @@ class CyclicMVDR(Beamformer):
     def compute_cyclic_mvdr_beamformers_wl(self, cov_dict, which_variant, cyclic_bins, speech_rtf_oracle=np.array([]),
                                             name_input_sig='noisy'):
         """ Compute the weights for the widely linear cyclic MVDR beamformer (cMVDR). """
+
+        if self.harmonic_info is None:
+            raise ValueError("harmonic_info must be set before calling compute_cyclic_mvdr_beamformers")
 
         cov_input_wb = cov_dict[name_input_sig+'_wb']
         cov_input_nb = cov_dict[name_input_sig+'_nb']
@@ -216,9 +223,11 @@ class CyclicMVDR(Beamformer):
         non_cyclic_bins = np.setdiff1d(np.arange(K_nfft), cyclic_bins)
 
         # MVDR beamformer for non-cyclic bins (# Fall back to MVDR for the non-harmonic bins)
+        rtf_oracle_available = np.any(speech_rtf_oracle) and speech_rtf_oracle is not None and speech_rtf_oracle.size > 0
+
         if M > 1:
             for kk in non_cyclic_bins:
-                speech_rtf_oracle_kk = speech_rtf_oracle[kk] if np.any(speech_rtf_oracle) else None
+                speech_rtf_oracle_kk = speech_rtf_oracle[kk] if rtf_oracle_available else None
                 rtf = self.estimate_rtf_or_get_oracle_mvdr(cov_input_nb[kk], cov_noise_nb[kk], speech_rtf_oracle_kk,
                                                            which_variant, kk)
                 cov_kk = cov_input_nb[kk] if self.minimize_noisy_cov_mvdr else cov_noise_nb[kk]
@@ -231,7 +240,7 @@ class CyclicMVDR(Beamformer):
         # cMVDR beamformer
         for kk in cyclic_bins:
             P = P_all[kk] if P_all.size > 0 else 1
-            speech_rtf_oracle_kk = speech_rtf_oracle[kk] if np.any(speech_rtf_oracle) else None
+            speech_rtf_oracle_kk = speech_rtf_oracle[kk] if rtf_oracle_available else None
             rtf = self.estimate_rtf_or_get_oracle_mvdr(cov_input_nb[kk], cov_noise_nb[kk], speech_rtf_oracle_kk,
                                                        which_variant, kk)
 
@@ -345,7 +354,7 @@ class CyclicMVDR(Beamformer):
             ev_left_signal = cov_noise_nb @ ev[:, -1:]
             if np.any(np.isclose(ev_left_signal, 0)):
                 warnings.warn(f"RTF is close to 0 for bin {kk}.")
-            rtf = ev_left_signal / ev_left_signal[0]
+            rtf = ev_left_signal / (ev_left_signal[0] + eps)  # Normalize to avoid division by zero
             self.rtf_est[kk] = np.squeeze(rtf)
             self.rtf_needs_estimation[kk] = False
             return self.rtf_est[kk]

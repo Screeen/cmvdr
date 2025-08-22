@@ -53,6 +53,8 @@ class F0Tracker:
 
 
 class F0Manager:
+    if gs.rng is None:
+        raise ValueError("Global random number generator is not set. Please set gs.rng before using F0Manager.")
     inharmonicity_signs = gs.rng.choice([-1, 1], 1000)
 
     def __init__(self, f0_est: F0Estimator = None):

@@ -91,15 +91,18 @@ class BeamformerManager:
             #                                                                                   which_bins_cyclic_bfs)
 
             elif bf_first_name == 'mwf':
+                raise NotImplementedError(f"Adjust implementation to use cov_dict instead of ch (class)")
                 weights[bf_name], error_flags[bf_name] = (
                     self.mwf.compute_narrowband_mwf_beamformers(ch, bf_variant))
 
             elif bf_first_name == 'cmwf':
+                raise NotImplementedError(f"Adjust implementation to use cov_dict instead of ch (class)")
                 # print("DEBUG keep P eigenvalues for the noise covariance matrix (cMWF)")
                 weights[bf_name], error_flags[bf_name] = (
                     self.mwf.compute_cyclic_mwf_beamformers(ch, bf_variant, processed_bins=which_bins_cyclic_bfs))
 
             elif bf_first_name == 'mf' and bf_variant == 'semi-oracle':  # matched filter
+                raise NotImplementedError(f"Adjust implementation to use cov_dict instead of ch (class)")
                 weights[bf_name] = self.other_bf.compute_matched_filter(ch, speech_rtf_oracle)
             else:
                 warnings.warn(f"Unknown beamformer: {bf_name}")
@@ -139,6 +142,7 @@ class BeamformerManager:
     @staticmethod
     def make_weights_dict_symmetric_around_central_frequency(K_nfft, weights_dict):
         # Expected shape of weights: (M, K_nfft)
+        assert K_nfft % 2 == 0, "K_nfft must be an even number."
         for key in weights_dict.keys():
             weights_dict[key][:, K_nfft // 2 + 1:] = weights_dict[key][:, 1:K_nfft // 2][:, ::-1].conj()
             weights_dict[key][:, K_nfft // 2] = np.real(weights_dict[key][:, K_nfft // 2])
@@ -151,6 +155,7 @@ class BeamformerManager:
     @staticmethod
     def make_signals_dict_symmetric_around_central_frequency(K_nfft, signals_dict):
         # Expected shape of signals: (K_nfft, num_frames)
+        assert K_nfft % 2 == 0, "K_nfft must be an even number."
         for key in signals_dict.keys():
             signals_dict[key][K_nfft // 2 + 1:] = signals_dict[key][1:K_nfft // 2][::-1].conj()
             signals_dict[key][K_nfft // 2] = np.real(signals_dict[key][K_nfft // 2])
@@ -163,6 +168,9 @@ class BeamformerManager:
     def beamform_signals(self, noisy_stft, noisy_mod_stft_3d, slice_frames, weights,
                          mod_amount=F0ChangeAmount.no_change):
 
+        if self.harmonic_info is None:
+            raise ValueError("harmonic_info must be set before calling beamform_signals")
+
         for bf_name, weight in weights.items():
             if np.allclose(weight, 0) and slice_frames.stop - slice_frames.start > 1:
                 print(f"Light warning: beamformer {bf_name} is 0 (for a single chunk).")
@@ -173,7 +181,7 @@ class BeamformerManager:
         K_nfft_real = noisy_stft.shape[1]
 
         if K_nfft_real % 2 == 0:
-            warnings.warn(f"{K_nfft_real = }, but it should be given by K // 2 + 1 which is an odd number. Odd!")
+            warnings.warn(f"{K_nfft_real = }, but it is given by K // 2 + 1 which is an odd number. Check the STFT parameters.")
 
         # Apply cyclic beamformers to modulated signals, stationary beamformers to the normal STFT signal
         bfd = {}
