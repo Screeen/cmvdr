@@ -75,15 +75,15 @@ class BeamformerManager:
 
                 self.mvdr.rtf_needs_estimation = self.mvdr.check_if_rtf_needs_estimation(idx_chunk)
                 weights[bf_name], error_flags[bf_name], cond_num_cov[bf_name], singular_values[bf_name] = (
-                    self.mvdr.compute_cyclic_mvdr_beamformers(cov_dict, bf_variant, which_bins_cyclic_bfs, speech_rtf_oracle,
-                                                              name_input_sig=name_input_sig))
+                    self.mvdr.compute_cyclic_mvdr_beamformers(cov_dict, bf_variant, which_bins_cyclic_bfs,
+                                                              speech_rtf_oracle, name_input_sig=name_input_sig))
 
             elif bf_first_name == 'cmvdr-wl':
 
                 self.mvdr.rtf_needs_estimation = self.mvdr.check_if_rtf_needs_estimation(idx_chunk)
                 weights[bf_name], error_flags[bf_name], cond_num_cov[bf_name], singular_values[bf_name] = (
-                    self.mvdr.compute_cyclic_mvdr_beamformers(cov_dict, bf_variant, which_bins_cyclic_bfs, speech_rtf_oracle,
-                                                              use_pseudo_cov=True, name_input_sig=name_input_sig))
+                    self.mvdr.compute_cyclic_mvdr_beamformers_wl(cov_dict, bf_variant, which_bins_cyclic_bfs,
+                                                              speech_rtf_oracle, name_input_sig=name_input_sig))
 
             # elif bf_first_name == 'clcmv':
             #     weights[bf_name], error_flags[bf_name] = self.compute_cyclic_lcmv_beamformers(C_rtf,

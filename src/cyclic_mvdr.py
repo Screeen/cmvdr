@@ -85,9 +85,42 @@ class CyclicMVDR(Beamformer):
 
         return weights_mvdr, error_flag, cond_num_cov, singular_values
 
-    def compute_cyclic_mvdr_beamformers(self, cov_dict, which_variant, processed_bins, speech_rtf_oracle=np.array([]),
-                                        use_pseudo_cov=False, name_input_sig='noisy'):
-        """ Compute the weights for the cyclic MVDR beamformer (cMVDR). """
+    def compute_cyclic_mvdr_beamformers(self, cov_dict, which_variant, cyclic_bins, speech_rtf_oracle=np.array([]),
+                                        name_input_sig='noisy'):
+        """ Compute the weights for the cyclic MVDR beamformer (cMVDR).
+        Parameters
+        ----------
+        cov_dict : dict
+            Dictionary containing covariance matrices for the input and noise signals.
+            Keys should include 'noisy_wb', 'noisy_nb', 'noise_wb', 'noise_nb'.
+        which_variant : str
+            Variant of the MVDR beamformer to use. Options are 'blind', 'semi-oracle', 'oracle'.
+        cyclic_bins : array_like
+            Indices of the cyclic frequency bins.
+        speech_rtf_oracle : array_like, optional
+            Oracle relative transfer functions (RTFs) of the speech signal. Required if which_variant is
+            'oracle' or 'semi-oracle'.
+        name_input_sig : str, optional
+            Name of the input signal in the covariance dictionary. Default is 'noisy'.
+        Returns
+        -------
+        weights : (M * P_max, K_nfft) ndarray
+            cMVDR beamforming weights, where M is the number of microphones and P_max is
+            the maximum number of shifts for the cyclic bins.
+        error_flag : (K_nfft,) ndarray
+            Error flags for each frequency bin.
+        cond_num_cov : (K_nfft,) ndarray
+            Condition numbers of the covariance matrices for each frequency bin.
+        singular_values : (K_nfft, M * P_max) ndarray
+            Singular values of the covariance matrices for each frequency bin.
+        Notes
+        -----
+        The cMVDR beamformer is a cyclic extension of the MVDR beamformer that takes
+        into account the cyclic nature of the noise signal. It computes the beamforming weights
+        using the covariance matrices of the input and noise signals, as well as the
+        relative transfer functions (RTFs) of the desired signal.
+        The 'blind' variant estimates the RTFs using the generalized eigenvalue decomposition (GEVD) of the covariance matrices.
+        """
 
         cov_input_wb = cov_dict[name_input_sig+'_wb']
         cov_input_nb = cov_dict[name_input_sig+'_nb']
@@ -98,7 +131,76 @@ class CyclicMVDR(Beamformer):
         P_max = cov_input_wb.shape[-1] // M
         P_all = self.harmonic_info.get_num_shifts_all_frequencies()
         loadings = self.get_loading_wb(cov_input_wb, *self.loadings_cfg, P_all, M=M)
-        pseudo_cov_factor = 2 if use_pseudo_cov else 1
+
+        eye_wb = np.eye(M * P_max)
+        eye_nb = np.eye(M)
+
+        weights = np.zeros((M * P_max, K_nfft), dtype=np.complex128, order='F')
+        error_flag = np.zeros(K_nfft, dtype=bool)
+
+        loadings_nb = self.get_loading_nb(which_variant, cov_input_nb, *self.loadings_cfg)
+
+        cond_num_cov = np.zeros(K_nfft)
+        singular_values = np.zeros((K_nfft, M * P_max))
+
+        non_cyclic_bins = np.setdiff1d(np.arange(K_nfft), cyclic_bins)
+
+        # MVDR beamformer for non-cyclic bins (# Fall back to MVDR for the non-harmonic bins)
+        if M > 1:
+            for kk in non_cyclic_bins:
+                speech_rtf_oracle_kk = speech_rtf_oracle[kk] if np.any(speech_rtf_oracle) else None
+                rtf = self.estimate_rtf_or_get_oracle_mvdr(cov_input_nb[kk], cov_noise_nb[kk], speech_rtf_oracle_kk,
+                                                           which_variant, kk)
+                cov_kk = cov_input_nb[kk] if self.minimize_noisy_cov_mvdr else cov_noise_nb[kk]
+                cov_nb_kk_inv_rtf = scipy.linalg.solve(cov_kk + loadings_nb[kk] * eye_nb, rtf, assume_a='pos')
+                weights[:M, kk] = np.squeeze(cov_nb_kk_inv_rtf / (np.conj(rtf).T @ cov_nb_kk_inv_rtf).real)
+        else:
+            # if M is 1, set to 1 weights for all non_cyclic bins
+            weights[0, non_cyclic_bins] = 1
+
+        # cMVDR beamformer
+        for kk in cyclic_bins:
+            P = P_all[kk] if P_all.size > 0 else 1
+            speech_rtf_oracle_kk = speech_rtf_oracle[kk] if np.any(speech_rtf_oracle) else None
+            rtf = self.estimate_rtf_or_get_oracle_mvdr(cov_input_nb[kk], cov_noise_nb[kk], speech_rtf_oracle_kk,
+                                                       which_variant, kk)
+
+            cov_kk = cov_input_wb[kk] if self.minimize_noisy_cov_mvdr else cov_noise_wb[kk]
+            rtf_padded = np.concatenate((rtf, np.zeros(M * P - M)))
+            try:
+                cov_wb_kk_inv_rtf = scipy.linalg.solve(
+                    cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P],
+                    rtf_padded, assume_a='pos')
+
+            except np.linalg.LinAlgError:
+                warnings.warn(f"LinAlgError for bin {kk} in cMVDR. Using narrowband weights.")
+                P = 1
+                rtf_padded = rtf_padded[:M * P]
+                cov_wb_kk_inv_rtf = scipy.linalg.solve(
+                    cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P],
+                    rtf_padded[:M * P], assume_a='pos')
+            weights[:M * P, kk] = cov_wb_kk_inv_rtf / (np.conj(rtf_padded).T @ cov_wb_kk_inv_rtf).real
+
+            # cond_num_cov[kk] = np.linalg.cond(cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P])
+            # singular_values[kk, :M * P] = np.linalg.svd(cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P],
+            #                                             compute_uv=False)
+
+        return weights, error_flag, cond_num_cov, singular_values
+
+    def compute_cyclic_mvdr_beamformers_wl(self, cov_dict, which_variant, cyclic_bins, speech_rtf_oracle=np.array([]),
+                                            name_input_sig='noisy'):
+        """ Compute the weights for the widely linear cyclic MVDR beamformer (cMVDR). """
+
+        cov_input_wb = cov_dict[name_input_sig+'_wb']
+        cov_input_nb = cov_dict[name_input_sig+'_nb']
+        cov_noise_wb = cov_dict['noise_wb']
+        cov_noise_nb = cov_dict['noise_nb']
+
+        K_nfft, M = cov_input_nb.shape[:2]
+        P_max = cov_input_wb.shape[-1] // M
+        P_all = self.harmonic_info.get_num_shifts_all_frequencies()
+        loadings = self.get_loading_wb(cov_input_wb, *self.loadings_cfg, P_all, M=M)
+        pseudo_cov_factor = 2
 
         eye_wb = np.eye(pseudo_cov_factor * M * P_max)
         eye_nb = np.eye(M)
@@ -111,53 +213,45 @@ class CyclicMVDR(Beamformer):
         cond_num_cov = np.zeros(K_nfft)
         singular_values = np.zeros((K_nfft, M * P_max))
 
+        non_cyclic_bins = np.setdiff1d(np.arange(K_nfft), cyclic_bins)
+
+        # MVDR beamformer for non-cyclic bins (# Fall back to MVDR for the non-harmonic bins)
+        if M > 1:
+            for kk in non_cyclic_bins:
+                speech_rtf_oracle_kk = speech_rtf_oracle[kk] if np.any(speech_rtf_oracle) else None
+                rtf = self.estimate_rtf_or_get_oracle_mvdr(cov_input_nb[kk], cov_noise_nb[kk], speech_rtf_oracle_kk,
+                                                           which_variant, kk)
+                cov_kk = cov_input_nb[kk] if self.minimize_noisy_cov_mvdr else cov_noise_nb[kk]
+                cov_nb_kk_inv_rtf = scipy.linalg.solve(cov_kk + loadings_nb[kk] * eye_nb, rtf, assume_a='pos')
+                weights[:M, kk] = np.squeeze(cov_nb_kk_inv_rtf / (np.conj(rtf).T @ cov_nb_kk_inv_rtf).real)
+        else:
+            # if M is 1, set to 1 weights for all non_cyclic bins
+            weights[0, non_cyclic_bins] = 1
+
         # cMVDR beamformer
-        for kk in range(K_nfft):
+        for kk in cyclic_bins:
             P = P_all[kk] if P_all.size > 0 else 1
             speech_rtf_oracle_kk = speech_rtf_oracle[kk] if np.any(speech_rtf_oracle) else None
             rtf = self.estimate_rtf_or_get_oracle_mvdr(cov_input_nb[kk], cov_noise_nb[kk], speech_rtf_oracle_kk,
                                                        which_variant, kk)
-            if kk not in processed_bins:  # Fall back to MVDR for the non-harmonic bins
-                cov_kk = cov_input_nb[kk] if self.minimize_noisy_cov_mvdr else cov_noise_nb[kk]
-                cov_nb_kk_inv_rtf = scipy.linalg.solve(cov_kk + loadings_nb[kk] * eye_nb, rtf, assume_a='pos')
-                weights[:M, kk] = np.squeeze(cov_nb_kk_inv_rtf / (np.conj(rtf).T @ cov_nb_kk_inv_rtf).real)
 
-            else:  # For the harmonic bins, use the cMVDR
+            cov_input_wb_kk = cov_input_wb[kk] if self.minimize_noisy_cov_mvdr else cov_noise_wb[kk]
+            A = cov_input_wb_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M*P, :M*P]
+            B = cov_dict[name_input_sig + '_pseudo'][kk, :M * P, :M * P]
+            two_MP = 2 * M * P
+            n_zeros = M * (P - 1)
+            rtf_padded_half = np.concatenate((rtf, np.zeros(n_zeros)))
+            rtf_padded = np.concatenate((rtf, np.zeros(n_zeros), np.conj(rtf), np.zeros(n_zeros)))
 
-                if not use_pseudo_cov:  # use normal covariance matrix E{xx^H}
-                    cov_kk = cov_input_wb[kk] if self.minimize_noisy_cov_mvdr else cov_noise_wb[kk]
-                    rtf_padded = np.concatenate((rtf, np.zeros(M * P - M)))
-                    try:
-                        cov_wb_kk_inv_rtf = scipy.linalg.solve(
-                            cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P],
-                            rtf_padded, assume_a='pos')
+            # With Schur complement
+            cov_wb_kk_inv_rtf = self.solve_via_schur(A, B,
+                                                        rtf_padded_half, np.conj(rtf_padded_half))
+            weights[:two_MP, kk] = cov_wb_kk_inv_rtf / (np.conj(rtf_padded).T @ cov_wb_kk_inv_rtf).real
 
-                    except np.linalg.LinAlgError:
-                        warnings.warn(f"LinAlgError for bin {kk} in cMVDR. Using narrowband weights.")
-                        P = 1
-                        rtf_padded = rtf_padded[:M * P]
-                        cov_wb_kk_inv_rtf = scipy.linalg.solve(
-                            cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P],
-                            rtf_padded[:M * P], assume_a='pos')
-                    weights[:M * P, kk] = cov_wb_kk_inv_rtf / (np.conj(rtf_padded).T @ cov_wb_kk_inv_rtf).real
-
-                else:  # use augmented covariance matrix with x__ = [x x^*]
-                    A = cov_input_wb[kk, :M * P, :M * P] + loadings[kk] * eye_wb[:M*P, :M*P]
-                    B = cov_dict[name_input_sig + '_pseudo'][kk, :M * P, :M * P]
-                    two_MP = 2 * M * P
-                    n_zeros = M * (P - 1)
-                    rtf_padded_half = np.concatenate((rtf, np.zeros(n_zeros)))
-                    rtf_padded = np.concatenate((rtf, np.zeros(n_zeros), np.conj(rtf), np.zeros(n_zeros)))
-
-                    # With Schur complement
-                    cov_wb_kk_inv_rtf = self.solve_via_schur(A, B,
-                                                                rtf_padded_half, np.conj(rtf_padded_half))
-                    weights[:two_MP, kk] = cov_wb_kk_inv_rtf / (np.conj(rtf_padded).T @ cov_wb_kk_inv_rtf).real
-
-                    # Brute force option (TODO: test if identical to solve_via_schur)
-                    # cov_aug = np.block([ [A, B], [B.conj(), A.conj()] ])
-                    # cov_wb_kk_inv_rtf = scipy.linalg.solve(cov_aug[:two_MP, :two_MP], rtf_padded, assume_a='pos')
-                    # weights[:two_MP, kk] = cov_wb_kk_inv_rtf / (np.conj(rtf_padded).T @ cov_wb_kk_inv_rtf).real
+            # Brute force option (TODO: test if identical to solve_via_schur)
+            # cov_aug = np.block([ [A, B], [B.conj(), A.conj()] ])
+            # cov_wb_kk_inv_rtf = scipy.linalg.solve(cov_aug[:two_MP, :two_MP], rtf_padded, assume_a='pos')
+            # weights[:two_MP, kk] = cov_wb_kk_inv_rtf / (np.conj(rtf_padded).T @ cov_wb_kk_inv_rtf).real
 
             # cond_num_cov[kk] = np.linalg.cond(cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P])
             # singular_values[kk, :M * P] = np.linalg.svd(cov_kk[:M * P, :M * P] + loadings[kk] * eye_wb[:M * P, :M * P],
