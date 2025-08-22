@@ -1,7 +1,7 @@
 # Verify multiplication/convolution property with mixed FFT and STFT processing
 import numpy as np
 import scipy.signal
-from src import utils as u
+from cmvdr import utils as u
 
 N = 4000
 Nh = 600

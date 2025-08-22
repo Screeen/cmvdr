@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 import scipy
 import os
-import src.utils as u
+import cmvdr.utils as u
 
 
 def generate_harmonic_process(freqs_hz, N_samples, fs_, amplitudes_over_time=None, phases=None,

@@ -6,18 +6,18 @@ from pathlib import Path
 from datetime import datetime
 from tqdm import tqdm
 
-from src import config
-from src.data_generator import DataGenerator
-from src import (covariance_estimator,
+from cmvdr import config
+from cmvdr.data_generator import DataGenerator
+from cmvdr import (covariance_estimator,
                                    manager)
-from src.f0_manager import F0ChangeAmount
-from src.harmonic_info import HarmonicInfo
-from src.modulator import Modulator
-from src.coherence_manager import CoherenceManager
-from src.beamformer_manager import BeamformerManager
-from src import (utils as u, data_generator, evaluator, plotter as pl, f0_manager)
-from src.player import Player  # do not remove, useful for quick evaluation of signals from cmd line
-from src import audio_disk_loader as audio_loader
+from cmvdr.f0_manager import F0ChangeAmount
+from cmvdr.harmonic_info import HarmonicInfo
+from cmvdr.modulator import Modulator
+from cmvdr.coherence_manager import CoherenceManager
+from cmvdr.beamformer_manager import BeamformerManager
+from cmvdr import (utils as u, data_generator, evaluator, plotter as pl, f0_manager)
+from cmvdr.player import Player  # do not remove, useful for quick evaluation of signals from cmd line
+from cmvdr import audio_disk_loader as audio_loader
 
 u.set_printoptions_numpy()
 threshold_hz_f0_std = np.inf

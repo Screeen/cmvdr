@@ -315,10 +315,11 @@ class DataGenerator:
     def get_sample_path(self, target_file_name=None):
         """ Get the path to the target sample file. """
 
-        datasets_path = self.datasets_path
+        datasets_path = self.datasets_path / 'audio'
 
         if target_file_name is not None and target_file_name.lower() != 'none':
             target_path = datasets_path / target_file_name
+            target_path = target_path.expanduser().resolve()
 
             # if target_path is not a valid wav file, look into subdirectories recursively
             if not target_path.exists():

@@ -5,9 +5,9 @@ import numpy as np
 import sys
 import os
 
-import src.utils as u
-import src.globs as gs
-from src.manager import Manager
+import cmvdr.utils as u
+import cmvdr.globs as gs
+from cmvdr.manager import Manager
 gs.rng, _ = gs.compute_rng(seed_is_random=True)
 
 

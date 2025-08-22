@@ -10,7 +10,7 @@ from .modulator import Modulator
 from .spectral_estimator import SpectralEstimator
 from .f0_estimator import F0Estimator
 
-from src import globs as gs
+from cmvdr import globs as gs
 
 
 class F0ChangeAmount(Enum):
@@ -54,7 +54,8 @@ class F0Tracker:
 
 class F0Manager:
     if gs.rng is None:
-        raise ValueError("Global random number generator is not set. Please set gs.rng before using F0Manager.")
+        raise ValueError("Global random number generator is not set. Please set gs.rng before using F0Manager:"
+                         "\nfrom cmvdr import globs as gs\ngs.rng, seed = gs.compute_rng(False, 42)")
     inharmonicity_signs = gs.rng.choice([-1, 1], 1000)
 
     def __init__(self, f0_est: F0Estimator = None):

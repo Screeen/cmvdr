@@ -5,8 +5,8 @@ import yaml
 import logging
 from pathlib import Path
 import numpy as np
-from src import utils
-from src import globs as gs
+from cmvdr import utils
+from cmvdr import globs as gs
 import sys
 
 # Logger

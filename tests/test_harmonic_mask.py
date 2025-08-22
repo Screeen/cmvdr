@@ -3,8 +3,8 @@ import unittest
 
 import numpy as np
 
-from src.coherence_manager import CoherenceManager
-from src import globs as gs, harmonic_info, covariance_holder
+from cmvdr.coherence_manager import CoherenceManager
+from cmvdr import globs as gs, harmonic_info, covariance_holder
 
 gs.rng, _ = gs.compute_rng(seed_is_random=True)
 

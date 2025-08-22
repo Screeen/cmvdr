@@ -77,7 +77,7 @@ import globs
 globals.rng = globals.compute_rng(seed_is_random=False, rnd_seed_=4110726324)
 rng = globals.rng
 
-import src.utils as u, manager
+import cmvdr.utils as u, manager
 import modulator
 
 u.set_printoptions_numpy()

@@ -3,13 +3,13 @@ import warnings
 from typing import Optional
 
 import numpy as np
-import src.utils as u
-from src.covariance_estimator import CovarianceEstimator
-from src.harmonic_info import HarmonicInfo
-from src.f0_manager import F0ChangeAmount
-from src.cyclic_mwf import CyclicMWF
-from src.cyclic_mvdr import CyclicMVDR
-from src.beamformer import Beamformer
+import cmvdr.utils as u
+from cmvdr.covariance_estimator import CovarianceEstimator
+from cmvdr.harmonic_info import HarmonicInfo
+from cmvdr.f0_manager import F0ChangeAmount
+from cmvdr.cyclic_mwf import CyclicMWF
+from cmvdr.cyclic_mvdr import CyclicMVDR
+from cmvdr.beamformer import Beamformer
 
 eps = 1e-15
 

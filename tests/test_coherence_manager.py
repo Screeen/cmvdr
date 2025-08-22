@@ -1,7 +1,7 @@
 import numpy as np
 import unittest
 
-from src.coherence_manager import CoherenceManager
+from cmvdr.coherence_manager import CoherenceManager
 
 
 class TestCoherenceEquivalence(unittest.TestCase):

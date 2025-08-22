@@ -1,7 +1,7 @@
 import numpy as np
 import scipy
-import src.utils as u
-from src.beamformer import Beamformer
+import cmvdr.utils as u
+from cmvdr.beamformer import Beamformer
 
 eps = 1e-15
 

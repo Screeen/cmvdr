@@ -5,18 +5,18 @@ Folders are specified in the configuration file (inference_cmvdr.yaml).
 import os
 from pathlib import Path
 import subprocess
-from src import config
-from src import globs as gs
+from cmvdr import config
+from cmvdr import globs as gs
 cfg_original = config.load_configuration('inference_cmvdr.yaml')
 gs.rng, cfg_original['seed_extracted'] = gs.compute_rng(cfg_original['seed_is_random'],
                                                         cfg_original['seed_if_not_random'])
 
-from src.beamformer_manager import BeamformerManager
+from cmvdr.beamformer_manager import BeamformerManager
 
 cfg_original = config.assign_default_values(cfg_original)
 cfg_original['beamforming']['methods'] = BeamformerManager.infer_beamforming_methods(cfg_original['beamforming'])
 
-from src import experiment_manager
+from cmvdr import experiment_manager
 
 data = cfg_original.get('data', {})
 input_dir, output_dir = None, None
