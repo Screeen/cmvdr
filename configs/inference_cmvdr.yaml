@@ -22,7 +22,6 @@ print_results: 1
 
 fs: 16000
 
-M: 2  # number of microphones
 stft:
     nfft: 2048
     overlap_fraction: 0.75
