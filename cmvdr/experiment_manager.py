@@ -469,7 +469,9 @@ class ExperimentManager:
             signals = evaluator.bake_dict_for_evaluation(signals)
 
             # Store audio signals for all param_values and montecarlo realizations to listen to them later
-            signals_dict_all_variations_time[name] = {key: dcopy(signals[key]['time']) for key in signals.keys()}
+            original_len = waveform.shape[-1]
+            signals_dict_all_variations_time[name] = {key: dcopy(signals[key]['time'][..., :original_len])
+                                                      for key in signals.keys()}
 
         # Save the beamformed audio files to the output folder
         if output_path is None:
