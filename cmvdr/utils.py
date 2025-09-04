@@ -644,8 +644,8 @@ def load_audio_file(audio_file_path, fs_, N_num_samples=-1, offset_seconds=None,
         s, fs = librosa.load(audio_file_path, sr=fs_)
         audio_cache[audio_file_path] = (s, fs)
 
-    if offset_seconds is None or offset_seconds == 'none':
-        offset_samples = max(gs.rng.integers(low=0, high=s.shape[-1]) - max(N_num_samples, 0), 0)
+    if offset_seconds is None:
+        offset_samples = gs.rng.integers(low=0, high=max(s.shape[-1] - N_num_samples, 1))
     else:
         offset_samples = int(offset_seconds * fs)
 

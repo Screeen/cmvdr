@@ -60,7 +60,7 @@ class Evaluator:
                             pesq_res = pypesq.pesq(ref=self.reference, deg=signal, fs=self.fs)
                         elif self.fs == 8000:
                             pesq_res = pypesq.pesq(ref=self.reference, deg=signal, fs=self.fs, mode='nb')
-                except pypesq.cypesq.NoUtterancesError as e:
+                except pypesq.NoUtterancesError as e:
                     warnings.warn(f"Error computing PESQ: {e}")
                 r['pesq'][sig_name] = pesq_res
 
@@ -360,6 +360,7 @@ class Evaluator:
     def print_final_results_table(cls, results_dict, algorithms_no_baseline, varying_param_values):
 
         # Create and print the table
+        from prettytable import PrettyTable
         table = PrettyTable()
         table.field_names = ["Algorithms"] + [str(x) for x in varying_param_values]
 
