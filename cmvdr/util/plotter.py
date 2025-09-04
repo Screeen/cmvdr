@@ -7,8 +7,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import matplotlib.ticker as tck
 
-from . import utils as u
-from . import config
+from cmvdr.util import config, utils as u
 
 num_reps = 3
 # List the markers in a way that consecutive markers are not too similar (for example, < and > are too similar and should be far apart)

@@ -186,7 +186,6 @@ class Player:
             for_spectrogram = ['noisy', 'wet_rank1', 'mvdr_blind', 'cmvdr_blind']
             # for_spectrogram = ['mvdr_blind', 'cmvdr_blind']
             Player.plot_mel_spectrograms(signals, for_spectrogram, fs=fs, save_figs=False)
-            from cmvdr import player
             player.Player.plot_mel_spectrograms_2_by_2(signals, for_spectrogram, fs=fs, save_figs=False)
             # player.Player.plot_mel_spectrograms_2_by_2(signals, for_spectrogram, fs=fs, save_figs=True)
             # Player.plot_mel_spectrograms(signals, for_spectrogram, fs=fs, save_figs=True)

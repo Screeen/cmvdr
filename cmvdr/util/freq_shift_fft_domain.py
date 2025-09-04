@@ -3,7 +3,6 @@ Cyclic beamforming in frequency domain, directly.
 This script generates synthetic data and applies the MVDR beamformer to the data.
 Useful for debugging and testing the beamformer.
 """
-import copy
 from pathlib import Path
 
 import librosa
@@ -72,13 +71,10 @@ def get_freq_shifted_signal(x_stft, integer_shifts_, max_bin_, kk_):
     return shifted_x
 
 
-import globs
-
 globals.rng = globals.compute_rng(seed_is_random=False, rnd_seed_=4110726324)
 rng = globals.rng
 
-import cmvdr.utils as u, manager
-import modulator
+import cmvdr.util.utils as u
 
 u.set_printoptions_numpy()
 
@@ -114,7 +110,7 @@ def local_istft(Y_, real_data=False):
     return y_
 
 
-m = manager.Manager()
+m = src.data_gen.manager.Manager()
 
 # Paths
 project_path = Path(__file__).resolve().parent.parent
@@ -235,7 +231,7 @@ noisy_time = u.normalize_volume(local_istft(noisy_speech_stft, real_data=True).r
 bfd_time = u.normalize_volume(local_istft(beamformed, real_data=True).real)
 
 # 3. Cyclic beamforming
-import f0_manager
+from cmvdr.data_gen import f0_manager
 
 f0_man = f0_manager.F0Manager()
 all_freqs_hz = np.fft.fftfreq(dft_props['nfft'], 1 / dft_props['fs'])

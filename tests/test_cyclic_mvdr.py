@@ -1,10 +1,10 @@
 # tests/test_cyclic_mvdr_no_mocks.py
 import unittest
 import numpy as np
-import cmvdr.globs as gs
+import cmvdr.util.globs as gs
 gs.rng, _ = gs.compute_rng(seed_is_random=False, rnd_seed_=123)
-from cmvdr.cyclic_mvdr import CyclicMVDR
-from cmvdr.beamformer import Beamformer
+from cmvdr.beamforming.cyclic_mvdr import CyclicMVDR
+from cmvdr.beamforming.beamformer import Beamformer
 
 
 class SimpleHarmonicInfo:

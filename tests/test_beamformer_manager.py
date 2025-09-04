@@ -2,9 +2,10 @@ import io
 import sys
 import unittest
 import numpy as np
-from cmvdr import globs as gs
+from cmvdr.util import globs as gs
+
 gs.rng, _ = gs.compute_rng(seed_is_random=False, rnd_seed_=123)
-from cmvdr.beamformer_manager import BeamformerManager, F0ChangeAmount
+from cmvdr.beamforming.beamformer_manager import BeamformerManager, F0ChangeAmount
 
 
 class SimpleHarmonicInfo:

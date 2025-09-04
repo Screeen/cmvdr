@@ -4,9 +4,8 @@ import warnings
 import numpy as np
 from scipy.signal import ShortTimeFFT
 
-from . import globs as g
-from . import utils as u
-from .harmonic_info import HarmonicInfo
+from cmvdr.util import globs as g, utils as u
+from cmvdr.util.harmonic_info import HarmonicInfo
 from .modulator import Modulator
 
 u.set_printoptions_numpy()

@@ -12,8 +12,7 @@ import os
 import soundfile
 from matplotlib import pyplot as plt, ticker
 from scipy.ndimage import uniform_filter1d
-from cmvdr import globs as gs
-
+from cmvdr.util import globs as gs
 
 eps = np.finfo(float).eps
 cmap = 'plasma'

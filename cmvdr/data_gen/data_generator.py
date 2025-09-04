@@ -6,11 +6,10 @@ import numpy as np
 import scipy
 from pathlib import Path
 
-from . import utils as u
 from .manager import Manager
-from . import globs as gs
+from ..util import globs as gs, utils as u
 from . import sin_generator
-from .config import ConfigManager
+from cmvdr.util.config import ConfigManager
 
 
 class DataGenerator:

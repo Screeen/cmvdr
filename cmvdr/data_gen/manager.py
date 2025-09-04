@@ -3,9 +3,7 @@ import warnings
 import numpy as np
 import scipy
 
-from . import utils as u
-from . import plotter as pl
-from . import globs as gs
+from cmvdr.util import globs as gs, plotter as pl, utils as u
 
 
 # noinspection PyTupleAssignmentBalance

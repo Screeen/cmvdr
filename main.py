@@ -2,13 +2,12 @@ import time
 import subprocess
 import argparse
 
-from cmvdr import config
-from cmvdr import globs as gs
+from cmvdr.util import config, globs as gs
+
 cfg_original = config.load_configuration('default.yaml')
 gs.rng, cfg_original['seed_extracted'] = gs.compute_rng(cfg_original['seed_is_random'],
                                                         cfg_original['seed_if_not_random'])
 
-from cmvdr.player import Player  # do not remove, useful for quick evaluation of signals from cmd line
 from cmvdr.experiment_manager import ExperimentManager
 
 # Main entry point for the cyclic beamforming experiment

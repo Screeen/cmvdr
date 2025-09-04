@@ -5,9 +5,8 @@ import numpy as np
 import pystoi
 from matplotlib import pyplot as plt
 
-from . import utils as u
-from . import plotter as pl
-from .manager import Manager
+from .util import plotter as pl, utils as u
+from cmvdr.data_gen.manager import Manager
 
 metrics_need_db = ['rmse', 'mae', 'mmse', 'sinr']
 

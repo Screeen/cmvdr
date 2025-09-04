@@ -2,8 +2,8 @@ import numpy as np
 import scipy
 import warnings
 import copy
-import cmvdr.utils as u
-from cmvdr.beamformer import Beamformer
+import cmvdr.util.utils as u
+from cmvdr.beamforming.beamformer import Beamformer
 
 eps = 1e-15
 

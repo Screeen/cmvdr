@@ -2,7 +2,7 @@ import numpy as np
 import unittest
 
 # replace these imports with wherever you’ve defined them
-from cmvdr.modulator import Modulator
+from cmvdr.estimation.modulator import Modulator
 
 
 class TestToleranceClustering(unittest.TestCase):

@@ -1,7 +1,4 @@
-import warnings
-
 import numpy as np
-from . import utils as u
 
 
 class HarmonicInfo:

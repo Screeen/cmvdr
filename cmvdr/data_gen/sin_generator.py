@@ -1,8 +1,7 @@
 import numpy as np
 
-from . import utils as u
 from .f0_manager import F0Manager
-from . import globs as gs
+from ..util import globs as gs, utils as u
 
 
 class SinGenerator:

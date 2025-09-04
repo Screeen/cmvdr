@@ -1,10 +1,9 @@
 import warnings
 
 import numpy as np
-from . import globs as g
-from .f0_manager import F0ChangeAmount
-from .harmonic_info import HarmonicInfo
-from . import utils as u
+from cmvdr.util import globs as g, utils as u
+from cmvdr.data_gen.f0_manager import F0ChangeAmount
+from cmvdr.util.harmonic_info import HarmonicInfo
 from .covariance_holder import CovarianceHolder
 
 

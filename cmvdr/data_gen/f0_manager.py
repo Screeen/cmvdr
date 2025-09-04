@@ -4,13 +4,12 @@ from enum import Enum
 import numpy as np
 from typing import Dict, Optional
 
-from . import harmonic_info as hi
-from .coherence_manager import CoherenceManager
-from .modulator import Modulator
-from .spectral_estimator import SpectralEstimator
-from .f0_estimator import F0Estimator
+from cmvdr.estimation.coherence_manager import CoherenceManager
+from cmvdr.estimation.modulator import Modulator
+from cmvdr.estimation.spectral_estimator import SpectralEstimator
+from cmvdr.estimation.f0_estimator import F0Estimator
 
-from cmvdr import globs as gs
+from cmvdr.util import globs as gs, harmonic_info as hi
 
 
 class F0ChangeAmount(Enum):

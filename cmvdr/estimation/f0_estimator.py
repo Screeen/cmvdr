@@ -2,9 +2,9 @@ import warnings
 import librosa
 import numpy as np
 
-from .config import ConfigManager
+from cmvdr.util.config import ConfigManager
 
-from . import plotter as pl
+from cmvdr.util import plotter as pl
 
 
 class F0Estimator:

@@ -6,9 +6,8 @@ import scipy
 from numba import njit, prange
 from scipy.signal import ShortTimeFFT
 
-from . import utils as u
-from . import globs as g
-from .harmonic_info import HarmonicInfo
+from cmvdr.util import globs as g, utils as u
+from cmvdr.util.harmonic_info import HarmonicInfo
 
 u.set_printoptions_numpy()
 u.set_plot_options()

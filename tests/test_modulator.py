@@ -7,9 +7,8 @@ import unittest
 import numpy as np
 import scipy
 
-from cmvdr import utils as u
-from cmvdr.modulator import Modulator
-from cmvdr import globs as gs
+from cmvdr.estimation.modulator import Modulator
+from cmvdr.util import globs as gs, utils as u
 
 gs.rng, _ = gs.compute_rng(seed_is_random=True)
 

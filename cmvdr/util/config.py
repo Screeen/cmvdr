@@ -5,13 +5,12 @@ import yaml
 import logging
 from pathlib import Path
 import numpy as np
-from cmvdr import utils
-from cmvdr import globs as gs
+from cmvdr.util import globs as gs
 import sys
 
 # Logger
 logger = logging.getLogger(__name__)
-config_folder_source = Path(__file__).parent.parent / "configs"
+config_folder_source = Path(__file__).parent.parent.parent / "configs"
 if not config_folder_source.exists():
     raise FileNotFoundError(f"Configuration folder {config_folder_source} does not exist. "
                             "Please check the path or create the folder if necessary.")

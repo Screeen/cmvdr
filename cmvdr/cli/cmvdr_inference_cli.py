@@ -2,8 +2,8 @@ import os
 from contextlib import redirect_stdout
 from pathlib import Path
 import argparse
-from cmvdr import config
-from cmvdr import globs as gs
+from cmvdr.util import config, globs as gs
+
 gs.rng, _ = gs.compute_rng(seed_is_random=False, rnd_seed_=0, verbose=False)
 from cmvdr import experiment_manager
 

@@ -2,7 +2,8 @@ import pickle
 import matplotlib.pyplot as plt
 from pathlib import Path
 from matplotlib.collections import PolyCollection
-from cmvdr import utils as u
+from cmvdr.util import utils as u
+
 u.set_plot_options(use_tex=True)
 
 # Open pickled image from file
