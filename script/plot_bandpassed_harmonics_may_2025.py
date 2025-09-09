@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 import soundfile as sf
 import scipy
 import os
+from pathlib import Path
+from scipy.signal import ShortTimeFFT
+
 import cmvdr.util.utils as u
 
 
@@ -81,7 +84,7 @@ def bandpass(f_c, fs, bw=20):
 
 
 u.set_plot_options(use_tex=True)
-parent_dir = "../datasets/audio/20_05_2025"
+parent_dir = "../../datasets/audio/20_05_2025"
 file_name = "cello-e2.wav"
 # file_name = "Bass.arco.ff.sulC.C1.stereo.aif"
 # file_name = "trumpet-G3.wav"
@@ -89,12 +92,15 @@ file_name = "cello-e2.wav"
 # file_name = "TenorTrombone.ff.A2.stereo.wav"
 # file_name = "335559__sonic-wolf__industrial-agitator-recording_short.wav"
 
-x, fs = sf.read(os.path.join(parent_dir, file_name))
+file_path = Path(os.path.join(parent_dir, file_name)).expanduser().resolve()
+if not os.path.isfile(file_path):
+    raise FileNotFoundError(f"File {file_path} not found.")
+x, fs = sf.read(file_path)
 
 if file_name == "cello-e2.wav":
     file_name_plot = 'Cello-E2'
-    # f0 = 82.41  # E2
-    f0 = 82  # E2
+    f0 = 82.41  # E2
+    # f0 = 82  # E2
 elif file_name == "trumpet-C4.wav":
     file_name_plot = 'Trumpet-C4'
     f0 = 261.63  # C4
@@ -118,8 +124,8 @@ if x.ndim > 1:
 # x = np.random.normal(size=x.shape)
 # file_name_plot = 'White noise'
 
-plot_downshifted_harmonics = False
-plot_spectrum_ideal_harmonics = True
+plot_downshifted_harmonics = True
+plot_spectrum_ideal_harmonics = 0
 harmonics = 3
 hsize = u.get_plot_width_double_column_latex()
 vsize = hsize * 1.5
@@ -129,6 +135,28 @@ suptitle_font_size = 10
 title_font_size = 8
 label_font_size = 8
 tick_font_size = 8
+
+
+def compute_corr_coeff(in1, in2, stft_obj_):
+    in1_stft = stft_obj_.stft(in1[start:end])
+    in2_stft = stft_obj_.stft(in2[start:end])
+
+    # Mask frequencies between 50 and 100Hz
+    freq_bins = stft_obj_.f
+    freq_mask_ = (freq_bins >= 50) & (freq_bins <= 120)
+    in1_stft = in1_stft[freq_mask_, :]
+    in2_stft = in2_stft[freq_mask_, :]
+    in_stft_concat = np.concatenate((in1_stft, in2_stft), axis=0)
+
+    cov = in_stft_concat @ np.conj(in_stft_concat.T) / in_stft_concat.shape[1]
+    psds = np.abs(np.diag(cov))
+    norm_matrix = np.sqrt(np.outer(psds, psds))
+    coh = np.abs(np.where(norm_matrix != 0, cov / norm_matrix, 0))
+
+    print(f"Coherence between harmonic {i + 1} and {j + 1}:")
+    print(np.abs(coh))
+    print()
+
 
 if plot_downshifted_harmonics:
 
@@ -186,8 +214,14 @@ if plot_downshifted_harmonics:
     fig.show()
 
     dest_path = os.path.join(os.getcwd(), f"{file_name_plot}_harmonics.pdf")
-    fig.savefig(fname=dest_path)
-    print(f"Saved to {dest_path = }")
+    # fig.savefig(fname=dest_path)
+    # print(f"Saved to {dest_path = }")
+
+    # Compute correlation coefficients in the frequency domain between harmonics
+    stft_obj = ShortTimeFFT(win=scipy.signal.windows.boxcar(512, sym=False), hop=512, fs=fs)
+    for i in range(harmonics):
+        for j in range(i + 1, harmonics):
+            compute_corr_coeff(outputs[i], outputs[j], stft_obj)
 
 if plot_spectrum_ideal_harmonics:
 
