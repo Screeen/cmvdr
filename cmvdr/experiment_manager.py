@@ -432,45 +432,21 @@ class ExperimentManager:
         dft_props = config.set_stft_properties(cfg['stft'], cfg['fs'])
         dg = DataGenerator()
         SFT, SFT_real, freqs_hz = dg.get_stft_objects(dft_props)
-
-        audio_list, names = audio_loader.AudioDiskLoader().load_audio_files(input_path)
-        audio_list_stft = [SFT_real.stft(x) for x in audio_list]
-
-        # results_dict = {}
-        # reference_sig_name = 'noisy'
         signals_dict_all_variations_time = {}
         f0man = f0_manager.F0Manager()
 
-        for waveform, audio_stft, name in tqdm(
-                zip(audio_list, audio_list_stft, names),
-                total=len(audio_list),
-                desc="Processing audio files",
-                disable=not verbose
-        ):
+        audio_list, names = audio_loader.AudioDiskLoader().load_audio_files(input_path)
 
-            signals = {'noisy': {'stft': np.asarray(audio_stft)[np.newaxis], 'time': np.asarray(waveform)[np.newaxis]}}
-            signals['noisy']['stft_conj'] = np.conj(signals['noisy']['stft'])
+        if cfg['harmonics_est']['source_signal_name'] == 'noise':
+            print(f"Trying to estimate resonant frequencies from noise signal. ")
+            if cfg['data']['input_noise_dir'] is None or not Path(cfg['data']['input_noise_dir']).exists():
+                raise ValueError("Input noise directory is not specified or does not exist.")
 
-            # Estimate resonant frequencies from the noisy signal
-            harmonic_freqs_est, crb_dict, f0_over_time = f0man.estimate_f0_or_resonant_freqs(signals, cfg, dft_props)
+        for waveform, name in tqdm(zip(audio_list, names), total=len(audio_list),
+                                   desc="Processing audio files", disable=not verbose):
 
-            # print("Debug: using noisy signal as noise_cov_est for estimating noise covariance.")
-            signals['noise_cov_est'] = signals['noisy']
-
-            bfd_stft_inference = self.run_cov_estimation_beamforming(signals=signals, f0man=f0man,
-                                                                     f0_over_time=f0_over_time,
-                                                                     harmonic_freqs_est=harmonic_freqs_est, cfg=cfg,
-                                                                     dft_props=dft_props, SFT=SFT,
-                                                                     name_input_sig='noisy')
-
-            signals_bfd_dict = ExperimentManager.convert_signals_time_domain(bfd_stft_inference, SFT_real)
-            signals = {**signals, **signals_bfd_dict}
-            signals = evaluator.bake_dict_for_evaluation(signals)
-
-            # Store audio signals for all param_values and montecarlo realizations to listen to them later
-            original_len = waveform.shape[-1]
-            signals_dict_all_variations_time[name] = {key: dcopy(signals[key]['time'][..., :original_len])
-                                                      for key in signals.keys()}
+            signals_dict_all_variations_time[name] = self.run_cmvdr_inference_file(
+                waveform, cfg, SFT_real=SFT_real, SFT=SFT, f0man=f0man, dft_props=dft_props)
 
         # Save the beamformed audio files to the output folder
         if output_path is None:
@@ -482,3 +458,58 @@ class ExperimentManager:
 
         audio_loader.AudioDiskLoader.save_audio_files(
             signals_dict_all_variations_time, output_path, fs=cfg['fs'], export_list=['cmvdr_blind'])
+
+    def run_cmvdr_inference_file(self, noisy_waveform, cfg, noise_waveform=np.array([]),
+                                 SFT_real=None, SFT=None, f0man=None, dft_props=None):
+        """ Run cMVDR inference on a single audio file (waveform). """
+
+        if SFT is None or SFT_real is None:
+            if dft_props is None:
+                dft_props = config.set_stft_properties(cfg['stft'], cfg['fs'])
+            SFT, SFT_real, freqs_hz = DataGenerator().get_stft_objects(dft_props)
+
+        if f0man is None:
+            f0man = f0_manager.F0Manager()
+
+        signals = {}
+        noisy_stft = SFT_real.stft(noisy_waveform)
+        signals['noisy'] = {'stft': np.asarray(noisy_stft)[np.newaxis],
+                            'stft_conj': np.conj(np.asarray(noisy_stft)[np.newaxis]),
+                            'time': np.asarray(noisy_waveform)[np.newaxis]}
+
+        if cfg['harmonics_est']['source_signal_name'] == 'noise':
+            if noise_waveform.size < 2:
+                raise ValueError("Input noise directory is not specified or does not exist.")
+            noise_stft = SFT_real.stft(noise_waveform)
+            signals['noise'] = {'stft': np.asarray(noise_stft)[np.newaxis],
+                                'stft_conj': np.conj(np.asarray(noise_stft)[np.newaxis]),
+                                'time': np.asarray(noise_waveform)[np.newaxis]}
+
+        # Estimate resonant frequencies from the noisy signal
+        harmonic_freqs_est, crb_dict, f0_over_time = f0man.estimate_f0_or_resonant_freqs(signals, cfg, dft_props)
+
+        if 'noise' in signals:
+            del signals['noise']
+
+        # print("Debug: using noisy signal as noise_cov_est for estimating noise covariance.")
+        signals['noise_cov_est'] = signals['noisy']
+
+        bfd_stft_inference = self.run_cov_estimation_beamforming(signals=signals, f0man=f0man,
+                                                                 f0_over_time=f0_over_time,
+                                                                 harmonic_freqs_est=harmonic_freqs_est, cfg=cfg,
+                                                                 dft_props=dft_props, SFT=SFT,
+                                                                 name_input_sig='noisy')
+
+        signals_bfd_dict = ExperimentManager.convert_signals_time_domain(bfd_stft_inference, SFT_real)
+
+        # Store audio signals for all param_values and montecarlo realizations to listen to them later
+        original_len = noisy_waveform.shape[-1]
+
+        # Return all signals cropped to original length (debug)
+        # signals = {**signals, **signals_bfd_dict}
+        # signals = evaluator.bake_dict_for_evaluation(signals)
+        # return {key: dcopy(signals[key]['time'][..., :original_len]) for key in signals.keys()}
+
+        # Return only the beamformed signal cropped to original length
+        signals_bfd_dict = evaluator.bake_dict_for_evaluation(signals_bfd_dict)
+        return {'cmvdr_blind': signals_bfd_dict['cmvdr_blind']['time'][..., :original_len]}
