@@ -1,37 +1,17 @@
 ## Description: Default configuration for inference with cyclic beamforming.
-seed_is_random: 0
-seed_if_not_random: 12345
-
-data_type: inference
-data_types_all: [inference]
-
-data:
-  input_dir: ../demo/noisy  # /space/giovanni/cmvdr-dnn/dns_challenge/datasets/dev/test/noisy
-  output_dir: ../demo/noisy_output
-  input_noise_dir: ../demo/noise
-
 beamforming:
-  methods_dict:  # set everything to false to skip the computation of the covariance matrices and the beamforming
-    mvdr: false
-    cmvdr: true
-  variants: ['blind']
   minimize_noisy_cov_mvdr: True
   loadings:  # these values can make a lot of difference! Change with extreme care.
     mvdr: [ 0, 0, 1000 ]  # min_load (not active 1.e-12), max_load (not active 1.e-1), max condition number (active)
 
-print_results: 1
-
 fs: 16000
-
 stft:
     nfft: 2048
     overlap_fraction: 0.75
     win_name: 'hann'
 
 cov_estimation:
-  use_sample_cov_est_for_noisy: true
-  use_rank1_model_for_oracle_cov_wet_estimation: true
-  noise_cov_est_len_seconds: 2.  # Time to estimate the noise covariance matrix
+  noise_cov_est_len_seconds: 2.  # Time to estimate the noise covariance matrix (multimicrophone only)
   recursive_average: 1  # if true, use recursive averaging for the covariance matrices
   cov_est_forgetting_factor: 0.05 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
 
@@ -54,7 +34,7 @@ harmonics_est:
   wait_len_seconds: 0.05  # offset before starting the estimation (avoid transient)
   snr_db_relative: 100 # noise_freq_est: how much is sinusoidal signal stronger than white noise coming from same direction
 
-  source_signal_name: noisy
+  source_signal_name: noisy  # overridden if noise is provided when CLI is used
   min_width: 1
   min_prominence: 0
 

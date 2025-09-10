@@ -1,0 +1,14 @@
+# Description: Configuration file for CMVDR beamforming on synthetic data with F0 estimation errors.
+base: experiments/default.yaml
+varying_parameters_names: [noise|inharmonicity_percentage]
+metrics:
+  time: [ 'sisdr' ]
+harmonics_est:
+  max_num_harmonics_peaks: 16
+  algo: oracle_f0 # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
+#    algo: oracle_all_harmonics # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
+cov_estimation:
+  cov_est_forgetting_factor: 0.005 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
+
+beamforming:
+  variants: [ 'blind' ]  # 'blind', 'semi-oracle', 'oracle'

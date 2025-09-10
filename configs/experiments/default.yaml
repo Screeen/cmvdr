@@ -1,4 +1,26 @@
 # Description: Default configuration for the cyclic beamforming experiments.
+
+################################################## OLD DEFAULTS ##################################################
+seed_is_random: 0
+seed_if_not_random: 12345
+
+print_results: 1
+plot:
+  destination:                  'debug'  # alternatives are debug, slides, paper
+  destination_final_results:    'slides'  # debug, slides, paper
+  intermediate_results:         0
+  spectrograms:                 0
+  all_variations:               0
+  f0_spectrogram:               0
+  error_per_frequency:          0
+  separately:                   0
+  waveforms:             false
+  force_no_tex:          false  # set to true if you do not have Tex installed for the plots
+
+fs: 16000
+
+################################################## OLD DEFAULTS ##################################################
+
 num_montecarlo_simulations:       50
 max_num_varying_parameters:       199  # maximum number of experiments (e.g., SNR, P_Max, ....) to run. Set to 1 for debugging.
 max_num_variations_per_parameter: 199  # maximum number of variations (e.g. SNR = [0, 10, 20, 30]) to run. Set to 1 for debugging.
@@ -35,7 +57,7 @@ stft:
     overlap_fraction: 0.75
     win_name: 'hann'
 
-datasets_path: ../datasets/
+datasets_path: ../datasets/  # relative to project root
 target:
   sig_type: sample
   sample_name: speech_harvard
@@ -97,101 +119,13 @@ cov_estimation:
 rir_specs:
   # Randomly select RIRs from the Hadad dataset or use handpicked RIRs
   # If you want to use handpicked RIRs, uncomment the common_path and target_path lines below and change the dataset_name to 'handpicked'.
-  datasets_path: ../datasets/
+  datasets_path: ../datasets/  # relative to project root
   dataset_name: hadad  # hadad or handpicked
   rir_len_seconds: 0.6
   rt60: "0.610s"  # options: "0.160s", "0.610s", "any"
   distance: "any"  # options: "1m", "2m", "any"
   mic_spacing: "8-8-8-8-8-8-8"  # options: "3-3-3-8-3-3-3", "4-4-4-8-4-4-4", "8-8-8-8-8-8-8", "any"
-
   # For handpicked RIRs, the following parameters are used:
 #  common_path:../datasets/ACE-corpus/Lin8Ch/
 #  target_path: Lecture_Room_1/1/Lin8Ch_508_1_RIR.wav
 #  noise_path: Lecture_Room_1/2/Lin8Ch_508_2_RIR.wav
-
-synthetic:
-  varying_parameters_names: [M, noise|snr_db_dir, cyclic|P_max, noise|harmonic_correlation]
-  metrics:
-    time: [ 'sisdr' ]
-  harmonics_est:
-    max_num_harmonics_peaks: 16
-  cov_estimation:
-    cov_est_forgetting_factor: 0.005 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
-
-synthetic_f0_err:
-  varying_parameters_names: [noise|inharmonicity_percentage]
-  metrics:
-    time: [ 'sisdr' ]
-  harmonics_est:
-    max_num_harmonics_peaks: 16
-    algo: oracle_f0 # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
-#    algo: oracle_all_harmonics # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
-  cov_estimation:
-    cov_est_forgetting_factor: 0.005 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
-
-  beamforming:
-    variants: [ 'blind' ]  # 'blind', 'semi-oracle', 'oracle'
-
-instruments:
-  varying_parameters_names: [noise|snr_db_dir, M, rir_specs|rt60, cyclic|P_max,]
-  metrics:
-    time: [ 'sisdr', 'stoi', 'pesq']
-  harmonics_est:
-    max_num_harmonics_peaks: 10
-  noise:
-    sig_type: sample
-    sample_name: 20_05_2025/
-  cov_estimation:
-    cov_est_forgetting_factor: 0.05 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
-
-plot_spectrograms:
-  varying_parameters_names: [noise|snr_db_dir]
-  metrics:
-    time: [ 'sisdr' ]
-  harmonics_est:
-    max_num_harmonics_peaks: 10
-  noise:
-    sig_type: sample
-    sample_name: 20_05_2025/cello-e2.wav
-  cov_estimation:
-    cov_est_forgetting_factor: 0.05 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
-
-demo:
-  num_montecarlo_simulations:  2
-  varying_parameters_names: [noise|snr_db_dir, noise|harmonic_correlation]
-  varying_params_values:
-    noise|snr_db_dir: [ -20, -10, 0 ]
-    noise|harmonic_correlation: [ 0.0, 0.3, 0.5, 0.8 ]
-  cov_estimation:
-    recursive_average: 0  # if true, use recursive averaging for the covariance matrices
-    cov_est_forgetting_factor: 0.005
-  cyclic:
-    P_max: 5
-  metrics:
-    time: [ 'sisdr' ]
-  stft:
-    nfft: 1024
-    overlap_fraction: 0.5
-  datasets_path: ./demo/
-  target:
-    sig_type: sample
-    sample_name: roy.wav
-    angle: None
-  harmonics_est:
-    max_num_harmonics_peaks: 5
-  rir_specs:
-    # Randomly select RIRs from the Hadad dataset or use handpicked RIRs
-    # If you want to use handpicked RIRs, uncomment the common_path and target_path lines below and change the dataset_name to 'handpicked'.
-    datasets_path: ./demo/rirs/
-    dataset_name: handpicked  # hadad or handpicked
-    rir_len_seconds: 0.6
-    rt60: "0.610s"  # options: "0.160s", "0.610s", "any"
-    distance: "any"  # options: "1m", "2m", "any"
-    mic_spacing: "8-8-8-8-8-8-8"  # options: "3-3-3-8-3-3-3", "4-4-4-8-4-4-4", "8-8-8-8-8-8-8", "any"
-
-    # For handpicked RIRs, the following parameters are used:
-    common_path: ./demo/
-    target_path: rir1.wav
-    noise_path: rir2.wav
-  plot:
-    force_no_tex: True

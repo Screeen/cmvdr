@@ -1,0 +1,45 @@
+# This configuration file is for running a synthetic demo experiment.
+# It uses a short sample of a speech signal as the target and handpicked RIRs.
+# The noise is a sinusoidal signal with varying SNR and harmonic correlation.
+# The results are averaged over 2 Monte Carlo simulations.
+# The results are printed and plotted without using Tex.
+
+base: experiments/default.yaml
+num_montecarlo_simulations:  2
+varying_parameters_names: [noise|snr_db_dir, noise|harmonic_correlation]
+varying_params_values:
+  noise|snr_db_dir: [ -20, -10, 0 ]
+  noise|harmonic_correlation: [ 0.0, 0.25, 0.5, 0.75, 0.99 ]
+cov_estimation:
+  recursive_average: 0  # if true, use recursive averaging for the covariance matrices
+  cov_est_forgetting_factor: 0.005
+cyclic:
+  P_max: 5
+metrics:
+  time: [ 'sisdr' ]
+stft:
+  nfft: 1024
+  overlap_fraction: 0.5
+datasets_path: ./demo/  # relative to project root
+target:
+  sig_type: sample
+  sample_name: roy.wav
+  angle: None
+harmonics_est:
+  max_num_harmonics_peaks: 5
+rir_specs:
+  # Randomly select RIRs from the Hadad dataset or use handpicked RIRs
+  # If you want to use handpicked RIRs, uncomment the common_path and target_path lines below and change the dataset_name to 'handpicked'.
+  datasets_path: ./demo/rirs/
+  dataset_name: handpicked  # hadad or handpicked
+  rir_len_seconds: 0.6
+  rt60: "0.610s"  # options: "0.160s", "0.610s", "any"
+  distance: "any"  # options: "1m", "2m", "any"
+  mic_spacing: "8-8-8-8-8-8-8"  # options: "3-3-3-8-3-3-3", "4-4-4-8-4-4-4", "8-8-8-8-8-8-8", "any"
+
+  # For handpicked RIRs, the following parameters are used:
+  common_path: ./demo/
+  target_path: rir1.wav
+  noise_path: rir2.wav
+plot:
+  force_no_tex: True
