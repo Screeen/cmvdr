@@ -194,3 +194,4 @@ cython_debug/
 /demo/noisy_output/*
 .idea
 test_install_venv/
+.idea/
