@@ -21,7 +21,7 @@ from rich.console import Console
 from rich.table import Table
 import numpy as np
 from tqdm import tqdm
-import cmvdr.metrics_manager as metrics_manager
+import cmvdr.eval.metrics_manager as metrics_manager
 
 
 def load_audio_files(folder, sr=None):

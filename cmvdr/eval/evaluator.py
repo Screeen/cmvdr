@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 from cmvdr.util import plotter as pl, utils as u
 from cmvdr.data_gen.manager import Manager
-from cmvdr import metrics_manager
+from cmvdr.eval import metrics_manager
 
 metrics_need_db = ['rmse', 'mae', 'mmse', 'sinr']
 

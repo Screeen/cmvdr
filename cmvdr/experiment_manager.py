@@ -12,7 +12,7 @@ from cmvdr.data_gen.data_generator import DataGenerator
 from cmvdr.data_gen.f0_manager import F0ChangeAmount
 from cmvdr.data_gen import data_generator, f0_manager, manager, audio_disk_loader as audio_loader
 from cmvdr.estimation import covariance_estimator
-from cmvdr import (evaluator)
+from cmvdr.eval import evaluator
 from cmvdr.util.player import Player  # do not remove, useful for quick evaluation of signals from cmd line
 from cmvdr.util import config, plotter as pl, utils as u
 from cmvdr.util.harmonic_info import HarmonicInfo
