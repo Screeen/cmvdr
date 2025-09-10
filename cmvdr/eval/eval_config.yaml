@@ -1,0 +1,2 @@
+fs: 16000
+metrics: ['STOI', 'SI-SDR', 'PESQ']  # other options: PESQ, STOI, DNSMOS
