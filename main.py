@@ -33,6 +33,11 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
+    # Load the configuration and merge with secondary config based on data type
+    if args.data_type != 'config':
+        cfg_original.update({'data_type': args.data_type})
+    cfg_original = config.load_and_merge_secondary_config(cfg_original, cfg_original['data_type'])
+
     start_time = time.time()
     print(f"Start time: {time.strftime('%H:%M:%S')}")
     res = ExperimentManager.run_experiment(cfg_original, args)

@@ -257,14 +257,9 @@ class ExperimentManager:
         return signals_bfd_dict
 
     @staticmethod
-    def run_experiment(cfg_original, args):
+    def run_experiment(cfg_original):
         """ Run the cyclic beamforming experiment."""
 
-        # Load the configuration and merge with secondary config based on data type
-        if args.data_type != 'config':
-            cfg_original.update({'data_type': args.data_type})
-
-        cfg_original = config.load_and_merge_secondary_config(cfg_original, cfg_original['data_type'])
         results_data_type_plots = {}
         results_data_type_freq_est_plots = {}
         signals_dict_all_variations_time = {}
