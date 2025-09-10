@@ -22,6 +22,7 @@ from rich.table import Table
 import numpy as np
 from tqdm import tqdm
 import cmvdr.eval.metrics_manager as metrics_manager
+from cmvdr.util import config
 
 
 def load_audio_files(folder, sr=None):
@@ -161,7 +162,7 @@ def evaluate_audio_files(folder_denoised, folder_reference=None, sort_results_by
     if not path_to_config.exists():
         raise FileNotFoundError(f"Configuration file {path_to_config} does not exist.")
 
-    cfg = load_configuration_from_path(path_to_config)
+    cfg = config.load_yaml_from_path(path_to_config)
     sr = cfg.get('fs', 0)
 
     # Load audio files, compute metrics, and save results
@@ -262,15 +263,6 @@ def print_as_rich_table(results_stats, title=''):
         table.add_row(metric, f"{stats['mean']:.4f}", f"{stats['stderr']:.4f}")
 
     console.print(table)
-
-
-def load_configuration_from_path(configuration_path):
-    """ Read settings from configuration file """
-
-    with open(configuration_path, 'r') as f:
-        conf_dict = yaml.safe_load(f)
-    print(f"Loaded configuration file {configuration_path}")
-    return conf_dict
 
 
 def enrich_with_fileid(files_dict):
