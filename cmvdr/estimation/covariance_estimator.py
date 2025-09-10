@@ -232,7 +232,7 @@ class CovarianceEstimator:
             harmonic_set_idx, P = harm_cache[kk]
 
             sel = harmonic_set_idx, slice(M * P), kk, slice_frames
-            noisy_update = np.ascontiguousarray(noisy_mod[sel]) @ np.ascontiguousarray(noisy_mod_conj[sel].T)
+            noisy_update = noisy_mod[sel] @ noisy_mod_conj[sel].T
 
             sel_cov = kk, slice(M * P), slice(M * P)  # corresponds to [kk, :M*P, :M*P]
             cov_dict['noisy_wb'][sel_cov] = (1. - forget_factor) * cov_dict['noisy_wb'][
