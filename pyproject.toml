@@ -59,3 +59,4 @@ include = ["cmvdr*"]
 
 [project.scripts]
 cmvdr = "cmvdr.cli.cmvdr_inference_cli:main"
+cmvdr-eval = "cmvdr.cli.evaluate_cli:main"
