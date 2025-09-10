@@ -6,8 +6,9 @@ data_type: inference
 data_types_all: [inference]
 
 data:
-  input_dir: demo/noisy  # /space/giovanni/cmvdr-dnn/dns_challenge/datasets/dev/test/noisy
-  output_dir: demo/noisy_output
+  input_dir: ../demo/noisy  # /space/giovanni/cmvdr-dnn/dns_challenge/datasets/dev/test/noisy
+  output_dir: ../demo/noisy_output
+  input_noise_dir: ../demo/noise
 
 beamforming:
   methods_dict:  # set everything to false to skip the computation of the covariance matrices and the beamforming
