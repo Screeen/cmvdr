@@ -2,16 +2,18 @@ import copy
 import warnings
 
 import numpy as np
-import pystoi
 from matplotlib import pyplot as plt
 
-from .util import plotter as pl, utils as u
+from cmvdr.util import plotter as pl, utils as u
 from cmvdr.data_gen.manager import Manager
+from cmvdr.eval import metrics_manager
 
 metrics_need_db = ['rmse', 'mae', 'mmse', 'sinr']
 
 # List of signals that should not be evaluated
 names_signals_to_skip = ['wet', 'noise', 'early', 'noise_cov_est', 'wet_rank1']
+
+mm = metrics_manager.MetricsManager()
 
 
 class Evaluator:
@@ -47,68 +49,35 @@ class Evaluator:
             if 'stoi' in self.metrics:
                 stoi = -np.inf
                 if np.sum(np.abs(signal)) > 0:
-                    stoi = pystoi.stoi(x=self.reference, y=signal, fs_sig=self.fs, extended=True)
+                    stoi = mm.compute_stoi(self.reference, signal, self.fs)
                 r['stoi'][sig_name] = stoi
 
             if 'pesq' in self.metrics:
-                import pesq as pypesq  # pip install https://github.com/ludlows/python-pesq/archive/master.zip
-                pesq_res = 0
-                try:
-                    if np.sum(np.abs(signal)) > 0:
-                        if self.fs == 16000:
-                            pesq_res = pypesq.pesq(ref=self.reference, deg=signal, fs=self.fs)
-                        elif self.fs == 8000:
-                            pesq_res = pypesq.pesq(ref=self.reference, deg=signal, fs=self.fs, mode='nb')
-                except pypesq.NoUtterancesError as e:
-                    warnings.warn(f"Error computing PESQ: {e}")
-                r['pesq'][sig_name] = pesq_res
+                r['pesq'][sig_name] = mm.compute_pesq(self.reference, signal, self.fs)
 
             if any(['mos' in x for x in self.metrics]):
-                from speechmos import dnsmos
-                dnsmos_res = -np.inf
-                if np.sum(np.abs(signal)) > 0:
-                    try:
-                        signal = u.normalize_volume(signal, 0.95)
-                        dnsmos_res = dnsmos.run(signal, sr=self.fs)
-                    except Exception as e:
-                        warnings.warn(f"Error computing DNSMOS: {e}")
+                dnsmos_res = mm.compute_dnsmos(signal, self.fs)
                 r['ovrl_mos'][sig_name] = dnsmos_res['ovrl_mos']
                 r['sig_mos'][sig_name] = dnsmos_res['sig_mos']
                 r['bak_mos'][sig_name] = dnsmos_res['bak_mos']
 
             if 'rmse' in self.metrics:
-                # rms_accuracy = -np.inf
                 rms_error = 0
                 if np.sum(np.abs(signal)) > 0:
                     diff = np.abs(self.reference - signal) ** 2
-                    # rms_error = np.sqrt(np.mean(diff[diff > 0]))  # doing this makes all errors equally bigger
                     rms_error = np.sqrt(np.mean(diff))
-                    # rms_accuracy = -rms_error
-                # r['rmse'][sig_name] = 10 * np.log10(rms_error + 1e-8)
                 r['rmse'][sig_name] = rms_error
 
             if 'mae' in self.metrics:  # Mean Absolute Error
-                mae = -np.inf
                 mae = 0
                 if np.sum(np.abs(signal)) > 0:
                     mae = np.mean(np.abs(self.reference - signal))
-                # r['mae'][sig_name] = 10 * np.log10(mae + 1e-8)
                 r['mae'][sig_name] = mae
 
             if 'mmse' in self.metrics:
-                # This metric expects signals in STFT domain
-                # if signal.ndim < 2:
-                #     raise ValueError("Why is the signal 1D? It should be 2D for calculating MMSE.")
-                # K_nfft, L_num_frames = signal.shape
-                # error_arr = np.ones(K_nfft) * np.inf
-                # for kk in range(K_nfft):
-                #     error_arr[kk] = np.mean(np.abs(self.reference[kk] - signal[kk]) ** 2)
-
                 error_arr = np.abs(self.reference - signal) ** 2
-
                 if error_arr.size > 0:
                     error_arr = np.mean(error_arr)
-                    # r['mmse'][sig_name] = 10 * np.log10(error_arr + 1e-8)
                     r['mmse'][sig_name] = error_arr
                 else:
                     r['mmse'][sig_name] = np.nan
@@ -123,7 +92,7 @@ class Evaluator:
             if 'sisdr' in self.metrics:
                 sisdr = -np.inf
                 if np.sum(np.abs(signal)) > 0:
-                    sisdr = self.si_sdr(self.reference, signal)
+                    sisdr = mm.sisdr(self.reference, signal)
                 r['sisdr'][sig_name] = sisdr
 
             if 'snrseg' in self.metrics:
@@ -134,63 +103,7 @@ class Evaluator:
                     snrseg = np.mean(snrseg_all)
                 r['snrseg'][sig_name] = snrseg
 
-        # for eval_method, results in r.items():
-        # Check for NaNs
-        # for sig_name, result in results.items():
-        #     if np.any(np.isnan(result)):
-        #         warnings.warn(f"NaN value found in {eval_method} for {sig_name}.")
-
         return r
-
-    @staticmethod
-    def si_sdr(reference, estimation):
-        """
-        Scale-Invariant Signal-to-Distortion Ratio (SI-SDR)
-
-        Args:
-            reference: numpy.ndarray, [..., T]
-            estimation: numpy.ndarray, [..., T]
-
-        Returns:
-            SI-SDR
-
-        [1] SDR– Half- Baked or Well Done?
-        http://www.merl.com/publications/docs/TR2019-013.pdf
-
-        # >>> np.random.seed(0)
-        # >>> reference = np.random.randn(100)
-        # >>> si_sdr(reference, reference)
-        # inf
-        # >>> si_sdr(reference, reference * 2)
-        # inf
-        # >>> si_sdr(reference, np.flip(reference))
-        # -25.127672346460717
-        # >>> si_sdr(reference, reference + np.flip(reference))
-        # 0.481070445785553
-        # >>> si_sdr(reference, reference + 0.5)
-        # 6.3704606032577304
-        # >>> si_sdr(reference, reference * 2 + 1)
-        # 6.3704606032577304
-        # >>> si_sdr([1., 0], [0., 0])  # never predict only zeros
-        # nan
-        # >>> si_sdr([reference, reference], [reference * 2 + 1, reference * 1 + 0.5])
-        # array([6.3704606, 6.3704606])
-
-        """
-        estimation, reference = np.broadcast_arrays(estimation, reference)
-        reference_energy = np.sum(reference ** 2, axis=-1, keepdims=True)
-
-        # This is $\alpha$ after Equation (3) in [1].
-        optimal_scaling = np.sum(reference * estimation, axis=-1, keepdims=True) / reference_energy
-
-        # This is $e_{\text{target}}$ in Equation (4) in [1].
-        projection = optimal_scaling * reference
-
-        # This is $e_{\text{res}}$ in Equation (4) in [1].
-        noise = estimation - projection
-
-        ratio = np.sum(projection ** 2, axis=-1) / np.sum(noise ** 2, axis=-1)
-        return to_db(ratio, min_val=1.e-3)
 
     @staticmethod
     def print_results_from_dict(results_dict):
@@ -221,51 +134,6 @@ class Evaluator:
         table.float_format = '.3'
         print(table)
         print("------------------------------------------------------------------------------------------")
-
-    # @staticmethod
-    # def compute_snrs(weights, ch, max_signal_power, max_ratio_silent_frames=1e-4):
-    #     """ Compute the SNR for each beamformer in weights. """
-    #
-    #     K = ch.cov_noisy_nb.shape[0]
-    #     M = ch.cov_noisy_nb.shape[-1]
-    #     P = ch.cov_noisy_wb.shape[-1] // M
-    #     eps = 1e-8
-    #
-    #     weights_padded = {}
-    #     for bf_name, w in weights.items():
-    #         bf_display_name = h.get_display_name(
-    #             bf_name)  # Convert the internal name of the algorithm to the display name
-    #         MP_current = w.shape[0]
-    #         weights_padded[bf_display_name] = w if MP_current == M * P else np.pad(w, ((0, M * P - MP_current), (0, 0)))
-    #
-    #     sig_pows = {bf_name: np.zeros(K) for bf_name in weights_padded.keys()}
-    #     noise_pows = {bf_name: np.zeros(K) for bf_name in weights_padded.keys()}
-    #     snrs_singleband = {bf_name: np.zeros(K) for bf_name in weights_padded.keys()}
-    #     snrs_singleband_db = {bf_name: np.zeros(K // 2 + 1) for bf_name in weights_padded.keys()}
-    #     snrs_fullband = {bf_name: 0 for bf_name in weights_padded.keys()}
-    #
-    #     for bf_name, w_pad in weights_padded.items():
-    #         for kk in range(K):
-    #             w = w_pad[:, kk]
-    #             is_loud_bin = ch.cov_wet_wb[kk, 0, 0] > max_ratio_silent_frames * max_signal_power
-    #             if is_loud_bin:
-    #                 sig_pow = np.real(w.conj().T @ ch.cov_wet_wb[kk] @ w)
-    #                 noise_pow = np.real(w.conj().T @ ch.cov_noisy_wb[kk] @ w + eps)
-    #                 sig_pows[bf_name][kk] = sig_pow
-    #                 noise_pows[bf_name][kk] = noise_pow
-    #                 snrs_singleband[bf_name][kk] = sig_pow / noise_pow
-    #                 if kk < K // 2 + 1:
-    #                     snrs_singleband_db[bf_name][kk] = 10 * np.log10(snrs_singleband[bf_name][kk])
-    #         snrs_fullband[bf_name] = np.nansum(sig_pows[bf_name]) / (np.nansum(noise_pows[bf_name]) + eps)
-    #
-    #     # snrs_avg = {bf_name: np.nansum(snrs_singleband[bf_name]) for bf_name in snrs_singleband.keys()}
-    #     # snrs_fullband_db = {bf_name: 10 * np.log10(snrs_fullband[bf_name] + eps) for bf_name in snrs_fullband.keys()}
-    #
-    #     # if P > 1:
-    #     #     Evaluator.plot_dict(snrs_db)
-    #     #     Evaluator.plot_dict(snrs)
-    #
-    #     return snrs_fullband
 
     @staticmethod
     def plot_dict(x_dict):
@@ -325,36 +193,6 @@ class Evaluator:
 
         return results_by_metric_diff_avg, algorithms, is_relative_result
 
-    # @classmethod
-    # def compute_sinr_single_beamformer(cls, cov_holder: CovarianceHolder, w_in, is_narrowband=True):
-    #
-    #     # Compute the SINR for a single beamformer w.
-    #     K = cov_holder.cov_noisy_nb.shape[0]
-    #     M = cov_holder.cov_noisy_nb.shape[-1]
-    #     sinr = np.zeros(K, dtype=float)
-    #     sinr_db = np.zeros(K, dtype=float)
-    #     sig_pow = np.zeros(K, dtype=float)
-    #     noise_pow = np.zeros(K, dtype=float)
-    #
-    #     w = w_in
-    #     target_cov = cov_holder.cov_wet_nb
-    #     noise_cov = cov_holder.cov_noise_wb_eval[:, :M, :M]
-    #     if not is_narrowband:
-    #         # w = w_in[:M]
-    #         target_cov = cov_holder.cov_wet_wb
-    #         noise_cov = cov_holder.cov_noise_wb_eval
-    #
-    #     for kk in range(K):
-    #         # if cov_holder.cov_wet_nb[kk].shape[-1] != M:
-    #         #     raise ValueError(f"Dimension mismatch: {cov_holder.cov_wet_nb[kk].shape[-1]} != {M} for kk={kk}")
-    #         target_power = np.real(w[:, kk].conj().T @ target_cov[kk] @ w[:, kk])
-    #         noise_power = np.real(w[:, kk].conj().T @ noise_cov[kk] @ w[:, kk])
-    #         sinr[kk] = target_power / noise_power
-    #         sinr_db[kk] = to_db(target_power) - to_db(noise_power)
-    #         sig_pow[kk] = target_power
-    #         noise_pow[kk] = noise_power
-    #
-    #     return sinr
     @classmethod
     def print_final_results_table(cls, results_dict, algorithms_no_baseline, varying_param_values):
 
@@ -445,12 +283,6 @@ def average_results(res_by_metric):
             dest[..., 2] = avg_plus_std
 
     return res_by_metric_avg, res_by_metric_avg_single_realizations
-
-
-def to_db(x, min_val=1e-15):
-    if np.any(x < 0):
-        raise ValueError("Input to to_db should be non-negative.")
-    return (10. * np.log10(x + min_val) + 300) - 300
 
 
 def convert_results_to_db(results_all_metrics, metrics_list):

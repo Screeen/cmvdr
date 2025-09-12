@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 from scipy.signal import ShortTimeFFT
 import time
@@ -10,7 +12,7 @@ from cmvdr.data_gen.data_generator import DataGenerator
 from cmvdr.data_gen.f0_manager import F0ChangeAmount
 from cmvdr.data_gen import data_generator, f0_manager, manager, audio_disk_loader as audio_loader
 from cmvdr.estimation import covariance_estimator
-from cmvdr import (evaluator)
+from cmvdr.eval import evaluator
 from cmvdr.util.player import Player  # do not remove, useful for quick evaluation of signals from cmd line
 from cmvdr.util import config, plotter as pl, utils as u
 from cmvdr.util.harmonic_info import HarmonicInfo
@@ -410,7 +412,7 @@ class ExperimentManager:
 
         return ret
 
-    def run_cmvdr_inference_folder(self, input_path, cfg, output_path=None, verbose=True):
+    def run_cmvdr_inference_folder(self, input_path, cfg, output_path=None, noise_path=None, verbose=True):
         """
         Run cMVDR inference on a given dataset (folder) and save the beamformed output to a specified output folder.
         This method loads audio files from the input folder, applies cMVDR beamforming, and
@@ -430,29 +432,48 @@ class ExperimentManager:
         signals_dict_all_variations_time = {}
         f0man = f0_manager.F0Manager()
 
-        audio_list, names = audio_loader.AudioDiskLoader().load_audio_files(input_path)
+        # Load audio files to be denoised
+        noisy_dict = audio_loader.AudioDiskLoader.load_audio_files(input_path)
 
-        if cfg['harmonics_est']['source_signal_name'] == 'noise':
-            print(f"Trying to estimate resonant frequencies from noise signal. ")
-            if cfg['data']['input_noise_dir'] is None or not Path(cfg['data']['input_noise_dir']).exists():
-                raise ValueError("Input noise directory is not specified or does not exist.")
+        noise_dict = {}  # Load noise files if a noise path is provided
+        if noise_path is not None:
+            noise_dict = audio_loader.AudioDiskLoader.load_audio_files(noise_path)
 
-        for waveform, name in tqdm(zip(audio_list, names), total=len(audio_list),
-                                   desc="Processing audio files", disable=not verbose):
+        for noisy_name, noisy_data in tqdm(noisy_dict.items(), total=len(noisy_dict),
+                                           desc="Processing audio files", disable=not verbose):
+            noise_waveform, harmonics_est_source = ExperimentManager.get_noise_waveform_and_harmonics_source(noise_dict,
+                                                                                                             noisy_data)
+            cfg['harmonics_est']['source_signal_name'] = harmonics_est_source
 
-            signals_dict_all_variations_time[name] = self.run_cmvdr_inference_file(
-                waveform, cfg, SFT_real=SFT_real, SFT=SFT, f0man=f0man, dft_props=dft_props)
+            signals_dict_all_variations_time[noisy_name] = self.run_cmvdr_inference_file(
+                noisy_data['signal'], cfg, noise_waveform=noise_waveform,
+                SFT_real=SFT_real, SFT=SFT, f0man=f0man, dft_props=dft_props)
 
         # Save the beamformed audio files to the output folder
         if output_path is None:
             if input_path.is_file():
                 output_path = Path(input_path).parent
             else:
-                # If it is a directory, use a directory with the same name and "_cmvdr" suffix
+                # If it is a directory, use a directory with the same noisy_name and "_cmvdr" suffix
                 output_path = Path(input_path).with_name(Path(input_path).name + '_cmvdr')
 
         audio_loader.AudioDiskLoader.save_audio_files(
             signals_dict_all_variations_time, output_path, fs=cfg['fs'], export_list=['cmvdr_blind'])
+
+    @staticmethod
+    def get_noise_waveform_and_harmonics_source(noise_dict, noisy_file):
+        """ Get the noise waveform and harmonics estimation source. """
+        noise_waveform = np.array([])
+        harmonics_est_source = 'noisy'
+        if noise_dict:
+            noisy_fileid = noisy_file['fileid']
+            if noise_dict and noisy_fileid in (r["fileid"] for r in noise_dict.values()):
+                noise_waveform = next(r["signal"] for r in noise_dict.values() if r["fileid"] == noisy_fileid)
+                harmonics_est_source = 'noise'
+            else:
+                warnings.warn(f"No noise reference found for {noisy_file}, estimating harmonics from the noisy signal.")
+
+        return noise_waveform, harmonics_est_source
 
     def run_cmvdr_inference_file(self, noisy_waveform, cfg, noise_waveform=np.array([]),
                                  SFT_real=None, SFT=None, f0man=None, dft_props=None):
@@ -483,8 +504,7 @@ class ExperimentManager:
         # Estimate resonant frequencies from the noisy signal
         harmonic_freqs_est, crb_dict, f0_over_time = f0man.estimate_f0_or_resonant_freqs(signals, cfg, dft_props)
 
-        if 'noise' in signals:
-            del signals['noise']
+        signals.pop('noise', None)  # remove the field to make it clear we do not use it for noise covariance estimation
 
         # print("Debug: using noisy signal as noise_cov_est for estimating noise covariance.")
         signals['noise_cov_est'] = signals['noisy']
@@ -499,11 +519,6 @@ class ExperimentManager:
 
         # Store audio signals for all param_values and montecarlo realizations to listen to them later
         original_len = noisy_waveform.shape[-1]
-
-        # Return all signals cropped to original length (debug)
-        # signals = {**signals, **signals_bfd_dict}
-        # signals = evaluator.bake_dict_for_evaluation(signals)
-        # return {key: dcopy(signals[key]['time'][..., :original_len]) for key in signals.keys()}
 
         # Return only the beamformed signal cropped to original length
         signals_bfd_dict = evaluator.bake_dict_for_evaluation(signals_bfd_dict)

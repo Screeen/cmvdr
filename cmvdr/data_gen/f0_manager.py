@@ -52,10 +52,16 @@ class F0Tracker:
 
 
 class F0Manager:
-    if gs.rng is None:
-        raise ValueError("Global random number generator is not set. Please set gs.rng before using F0Manager:"
-                         "\nfrom cmvdr import globs as gs\ngs.rng, seed = gs.compute_rng(False, 42)")
-    inharmonicity_signs = gs.rng.choice([-1, 1], 1000)
+    inharmonicity_signs = None
+
+    @classmethod
+    def get_inharmonicity_signs(cls):
+        if gs.rng is None:
+            raise ValueError("Global random number generator is not set. Please set gs.rng before using F0Manager:"
+                             "\nfrom cmvdr import globs as gs\ngs.rng, seed = gs.compute_rng(False, 42)")
+        if cls.inharmonicity_signs is None:
+            cls.inharmonicity_signs = gs.rng.choice([-1, 1], 1000)
+        return cls.inharmonicity_signs
 
     def __init__(self, f0_est: F0Estimator = None):
         if f0_est is not None:

@@ -1,0 +1,13 @@
+# Description: Configuration file for CMVDR on real recorded noises.
+
+base: experiments/default.yaml
+varying_parameters_names: [noise|snr_db_dir, M, rir_specs|rt60, cyclic|P_max,]
+metrics:
+  time: [ 'sisdr', 'stoi', 'pesq']
+harmonics_est:
+  max_num_harmonics_peaks: 10
+noise:
+  sig_type: sample
+  sample_name: 20_05_2025/
+cov_estimation:
+  cov_est_forgetting_factor: 0.05 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.

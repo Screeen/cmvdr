@@ -1,5 +1,7 @@
 import numpy as np
 import scipy
+from numba import njit
+
 eps = 1e-15
 
 
@@ -19,6 +21,7 @@ class Beamformer:
         return np.zeros_like(self.rtf_needs_estimation)
 
     @staticmethod
+    @njit(cache=True, parallel=True)
     def get_loading_nb(which_variant, cov_input_nb, min_val, max_val, condition_number=1000):
         # Loadings for reducing condition number of the covariance matrix
 
@@ -49,6 +52,7 @@ class Beamformer:
         return loadings
 
     @staticmethod
+    @njit(cache=True, parallel=True)
     def get_loading_wb(cov_wb, min_val, max_val, condition_number=1000, P_all_freqs=np.array([]), M=None):
         # Loadings for reducing condition number of the covariance matrix
 

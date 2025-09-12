@@ -1,0 +1,13 @@
+# Description: Configuration file for CMVDR on synthetic data.
+
+# This configuration file varies the number of microphones, the SNR, the number of harmonics
+# and the harmonic correlation of the noise.
+
+base: experiments/default.yaml
+varying_parameters_names: [M, noise|snr_db_dir, cyclic|P_max, noise|harmonic_correlation]
+metrics:
+  time: [ 'sisdr' ]
+harmonics_est:
+  max_num_harmonics_peaks: 16
+cov_estimation:
+  cov_est_forgetting_factor: 0.005 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.

@@ -215,18 +215,24 @@ class CovarianceEstimator:
         # Increase forgetting factor to adapt more quickly to changes in the environment.
 
         M, K_nfft = signals['noisy']['stft'].shape[:2]
-        P = cov_dict['noisy_wb'].shape[-1] // M
+        noisy_wb_dict = cov_dict['noisy_wb']
+        P = noisy_wb_dict.shape[-1] // M
 
-        if M * P != cov_dict['noisy_wb'].shape[-1]:
+        if M * P != noisy_wb_dict.shape[-1]:
             raise ValueError(
                 f"Number of microphones {M} and modulations {P} changed. why was the matrix not reallocated?."
-                f"Old shape: {cov_dict['noisy_wb'].shape}, new shape: {K_nfft, M * P, M * P}")
+                f"Old shape: {noisy_wb_dict.shape}, new shape: {K_nfft, M * P, M * P}")
+
+        harm_cache = [self.harmonic_info.get_harmonic_set_and_num_shifts(kk) for kk in range(K_nfft)]
 
         # Update received signal covariance matrix
+        noisy_mod = signals['noisy']['mod_stft_3d']
+        noisy_mod_conj = signals['noisy']['mod_stft_3d_conj']
         for kk in range(K_nfft):
-            harmonic_set_idx, P = self.harmonic_info.get_harmonic_set_and_num_shifts(kk)
+            harmonic_set_idx, P = harm_cache[kk]
+
             sel = harmonic_set_idx, slice(M * P), kk, slice_frames
-            noisy_update = signals['noisy']['mod_stft_3d'][sel] @ signals['noisy']['mod_stft_3d_conj'][sel].T
+            noisy_update = noisy_mod[sel] @ noisy_mod_conj[sel].T
 
             sel_cov = kk, slice(M * P), slice(M * P)  # corresponds to [kk, :M*P, :M*P]
             cov_dict['noisy_wb'][sel_cov] = (1. - forget_factor) * cov_dict['noisy_wb'][
@@ -256,7 +262,7 @@ class CovarianceEstimator:
 
             # Update the cross-covariance matrix between received signal and early reverberant signal (oracle cMWF)
             sel_xcov = kk, slice(M * P)  # corresponds to [kk, :M*P]
-            cross_noisy_early_update = (signals['noisy']['mod_stft_3d'][sel] *
+            cross_noisy_early_update = (noisy_mod[sel] *
                                         signals['wet_rank1']['mod_stft_3d_conj'][
                                             harmonic_set_idx, g.mic0_idx, kk, slice_frames].T)
             cov_dict['cross_noisy_early_wb'][sel_xcov] = (

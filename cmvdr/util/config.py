@@ -1,6 +1,6 @@
 import copy
 import warnings
-
+from importlib import resources   # Python 3.9+
 import yaml
 import logging
 from pathlib import Path
@@ -8,12 +8,7 @@ import numpy as np
 from cmvdr.util import globs as gs
 import sys
 
-# Logger
 logger = logging.getLogger(__name__)
-config_folder_source = Path(__file__).parent.parent.parent / "configs"
-if not config_folder_source.exists():
-    raise FileNotFoundError(f"Configuration folder {config_folder_source} does not exist. "
-                            "Please check the path or create the folder if necessary.")
 
 
 class ConfigManager:
@@ -179,10 +174,10 @@ class ConfigManager:
             signals_to_modulate.append('noise_cov_est')
 
         return signals_to_modulate
-    
+
     @staticmethod
     def get_varying_parameters_names(cfg_default):
-        
+
         varying_parameters_names = cfg_default['varying_parameters_names']
         varying_parameters_names = varying_parameters_names[:cfg_default['max_num_varying_parameters']]
         return varying_parameters_names
@@ -207,17 +202,22 @@ def get_varying_param_values(configuration: dict, parameter_to_vary: str):  # ->
     return varying_param_values
 
 
-def load_configuration(cfg_name=None, verbose=True):
-    """ Load configuration file """
+# def load_configuration(cfg_name=None, verbose=True):
+#     """ Load configuration file """
+#
+#     if verbose:
+#         print(f"Loading configuration file: {cfg_name}")
+#
+#     config_folder_source = PROJECT_ROOT / "configs"
+#     if not config_folder_source.exists():
+#         raise FileNotFoundError(f"Configuration folder {config_folder_source} does not exist. "
+#                                 "Please check the path or create the folder if necessary.")
+#     cfg_path = config_folder_source / cfg_name
+#     cfg_custom = load_yaml_from_path(cfg_path)
+#     return cfg_custom
 
-    if verbose:
-        print(f"Loading configuration file: {cfg_name}")
-    cfg_path = config_folder_source / cfg_name
-    cfg_custom = load_configuration_from_path(cfg_path)
-    return cfg_custom
 
-
-def load_configuration_from_path(configuration_path):
+def load_yaml_from_path(configuration_path):
     """ Read settings from configuration file """
 
     with open(configuration_path, 'r') as f:
@@ -268,7 +268,8 @@ def get_config_single_variation(cfg_exp, idx_var, varying_parameter_name):
             cfg_single_var[dict_name][param_name] = cfg_exp['varying_params_values'][varying_parameter_name][idx_var]
         elif len(split_name) == 3:
             dict_name, sub_dict_name, param_name = split_name
-            cfg_single_var[dict_name][sub_dict_name][param_name] = cfg_exp['varying_params_values'][varying_parameter_name][idx_var]
+            cfg_single_var[dict_name][sub_dict_name][param_name] = \
+                cfg_exp['varying_params_values'][varying_parameter_name][idx_var]
         else:
             raise NotImplementedError
     else:
@@ -278,7 +279,6 @@ def get_config_single_variation(cfg_exp, idx_var, varying_parameter_name):
 
 
 def check_cyclic_target_or_not(cfg):
-
     try:
         cyclostationary_target = cfg['cyclostationary_target']
         sig_type = cfg['target']['sig_type'],
@@ -300,18 +300,20 @@ def update_target_settings(target_sett):
 
 
 def merge_configurations(cfg_primary, cfg_secondary):
-    # We can't simply do cfg_default.update(cfg_secondary) because we need to merge dictionaries within dictionaries
-    # It could be that cfg_secondary only specifies a few keys of inner dictionaries.
-    # Do it recursively
+    """
+    Merge two configurations, with cfg_secondary overriding cfg_primary where specified
+    We can't simply do cfg_default.update(cfg_secondary) because we need to merge dictionaries within dictionaries
+    """
+    out = copy.deepcopy(cfg_primary)
     for key, value in cfg_secondary.items():
         if isinstance(value, dict):
             if key not in cfg_primary:
-                cfg_primary[key] = value
+                out[key] = copy.deepcopy(value)
             else:
-                merge_configurations(cfg_primary[key], value)
+                out[key] = merge_configurations(cfg_primary[key], value)
         else:
-            cfg_primary[key] = value
-    return cfg_primary
+            out[key] = copy.deepcopy(value)
+    return out
 
 
 def adjust_config_for_debug(cfg_default):
@@ -319,36 +321,34 @@ def adjust_config_for_debug(cfg_default):
         cfg_default['num_montecarlo_simulations'] = 1
         cfg_default['plot']['destination'] = 'debug'
         print(f"Running in debug mode. {cfg_default['num_montecarlo_simulations'] = } and "
-                f"{cfg_default['plot']['destination'] = }")
+              f"{cfg_default['plot']['destination'] = }")
     return cfg_default
 
 
-def load_and_merge_secondary_config(cfg_default, data_type_selected='synthetic'):
-    if cfg_default['secondary_config_file'].lower() != 'none':
-        cfg_secondary = load_configuration(cfg_default['secondary_config_file'])
-        cfg_secondary_override = cfg_secondary.get(data_type_selected, {})
-
-        # Remove the data_type key from the secondary config, so that it doesn't overwrite the default config
-        # when merging the two configurations
-        cfg_secondary.pop(data_type_selected)
-
-        cfg_default = merge_configurations(cfg_default, cfg_secondary)
-        cfg_default = merge_configurations(cfg_default, cfg_secondary_override)
-
-        # Remove the unused "data types" (configuration settings) to avoid polluting the final YAML file stored with the experiment
-        for data_type_other in cfg_default['data_types_all']:
-            if data_type_other != data_type_selected:
-                cfg_default.pop(data_type_other, None)
-
-        cfg_default = adjust_config_for_debug(cfg_default)
-    return cfg_default
+# def load_and_merge_secondary_config(cfg_default, data_type_selected='synthetic'):
+#     if cfg_default['secondary_config_file'].lower() != 'none':
+#         cfg_secondary = load_configuration(cfg_default['secondary_config_file'])
+#         cfg_secondary_override = cfg_secondary.get(data_type_selected, {})
+#
+#         # Remove the data_type key from the secondary config, so that it doesn't overwrite the default config
+#         # when merging the two configurations
+#         cfg_secondary.pop(data_type_selected)
+#
+#         cfg_default = merge_configurations(cfg_default, cfg_secondary)
+#         cfg_default = merge_configurations(cfg_default, cfg_secondary_override)
+#
+#         # Remove the unused "data types" (configuration settings) to avoid polluting the final YAML file stored with the experiment
+#         for data_type_other in cfg_default['data_types_all']:
+#             if data_type_other != data_type_selected:
+#                 cfg_default.pop(data_type_other, None)
+#
+#         cfg_default = adjust_config_for_debug(cfg_default)
+#     return cfg_default
 
 
 def assign_default_values(cfg):
     if 'minimize_noisy_cov_mvdr' not in cfg['beamforming']:
         cfg['beamforming']['minimize_noisy_cov_mvdr'] = True
-
-    cfg['harmonics_est']['freq_range_cyclic'] = cfg['cyclic']['freq_range_cyclic']
 
     cfg['target'] = cfg.get('target', {})
     cfg['target']['harmonic_correlation'] = cfg['target'].get('harmonic_correlation', 1.)
@@ -361,13 +361,16 @@ def assign_default_values(cfg):
     cfg['time'] = cfg.get('time', {})
     cfg['time']['chunk_len_seconds'] = cfg['time'].get('chunk_len_seconds', 0.)
 
-    cfg['time']['duration_approx_seconds'] = cfg['time'].get('duration_approx_seconds', cfg['time']['chunk_len_seconds'])
+    cfg['time']['duration_approx_seconds'] = cfg['time'].get('duration_approx_seconds',
+                                                             cfg['time']['chunk_len_seconds'])
     cfg['time']['fixed_length_chunks'] = cfg['time'].get('fixed_length_chunks', True)
     cfg['time']['overlap_frame_cov_est_percentage'] = cfg['time'].get('overlap_frame_cov_est_percentage', 0)
 
     cfg['cyclic'] = cfg.get('cyclic', {})
-    cfg['cyclic']['use_global_coherence'] = cfg['cyclic'].get('use_global_coherence', False)
+    cfg['cyclic']['use_global_coherence'] = cfg['cyclic'].get('use_global_coherence', True)
     cfg['cyclic']['harmonic_threshold'] = cfg['cyclic'].get('harmonic_threshold', 0)
+    cfg['cyclic']['freq_range_cyclic'] = cfg['cyclic'].get('freq_range_cyclic', [20, 2500])
+    cfg['harmonics_est']['freq_range_cyclic'] = cfg['cyclic']['freq_range_cyclic']
 
     cfg['use_masked_stft_for_evaluation'] = cfg.get('use_masked_stft_for_evaluation', False)
     cfg['print_results'] = cfg.get('print_results', True)
@@ -381,4 +384,71 @@ def assign_default_values(cfg):
 
     cfg['cyclostationary_target'] = cfg.get('cyclostationary_target', False)
 
+    cfg['data_type'] = cfg.get('data_type', 'inference')
+
+    cfg['cov_estimation'] = cfg.get('cov_estimation', {})
+    cfg['cov_estimation']['use_rank1_model_for_oracle_cov_wet_estimation'] = cfg['cov_estimation'].get('use_rank1_model_for_oracle_cov_wet_estimation', True)
+
     return cfg
+
+
+def _load_packaged_preset(name: str) -> dict:
+    # assumes presets are in package cmvdr.presets
+    if not name.endswith('.yaml') and not name.endswith('.yml'):
+        resource_name = f"{name}.yaml"
+    else:
+        resource_name = name
+    try:
+        pkg = resources.files("cmvdr.presets")
+        txt = (pkg / resource_name).read_text()
+        return yaml.safe_load(txt) or {}
+    except Exception:
+        return {}
+
+
+def load_configuration_outer(name_or_path: str) -> dict:
+    """ Load configuration file from path, repo configs folder, or packaged preset."""
+
+    # Make sure name_or_path has extension
+    if not name_or_path.endswith('.yaml') and not name_or_path.endswith('.yml'):
+        name_or_path = f"{name_or_path}.yaml"
+
+    p = Path(name_or_path)
+    # 1) explicit path
+    if p.exists():
+        cfg = load_yaml_from_path(p)
+    else:
+        # 2) repo-level experiments/configs
+        repo_cfg = get_project_root() / "configs" / "experiments" / f"{name_or_path}"
+        if repo_cfg.exists():
+            cfg = load_yaml_from_path(repo_cfg)
+        else:
+            # 3) packaged preset
+            cfg = _load_packaged_preset(name_or_path)
+
+    # 4) if config declares a base preset, merge it
+    base = cfg.get("base") or cfg.get("inherits") or None
+    if base:
+        # try packaged preset first, then repo experiment
+        base_cfg = _load_packaged_preset(base) or load_yaml_from_path(
+            get_project_root() / "configs" / f"{base}")
+        cfg = merge_configurations(base_cfg, cfg)
+
+    # 5) resolve paths (example)
+    def resolve_paths(d):
+        for k, v in d.items():
+            if isinstance(v, dict):
+                resolve_paths(v)
+            elif isinstance(v, str) and (v.startswith("./") or v.startswith("../") or v.startswith("~")):
+                d[k] = Path((get_project_root() / v)).expanduser().resolve()
+
+    resolve_paths(cfg)
+
+    if not cfg:
+        warnings.warn(f"Configuration '{name_or_path}' is empty or could not be found.")
+
+    return cfg
+
+
+def get_project_root():
+    return Path(__file__).resolve().parents[2]
