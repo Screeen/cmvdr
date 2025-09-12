@@ -19,7 +19,7 @@ especially in low signal-to-noise ratio (SNR) scenarios.
 - Python 3.9+ (for compatibility with librosa)
 - Tested on macOS 14.4.1 but should run on most Linux systems.
 
-### 1️⃣ Method 1: Simple pip installation (Recommended)
+### 1️⃣ `pip` installation
 The package is structured as a proper Python package and can be installed using pip:
 
 1. Clone the repository:
@@ -42,27 +42,6 @@ pip install -e .
 
 This will automatically install all dependencies defined in `pyproject.toml`.
 
-### 2️⃣ Method 2: Using uv (For developers)
-If you prefer using `uv` for faster dependency management:
-
-1. Clone the repository:
-```bash
-git clone git@github.com:Screeen/cmvdr.git
-cd cmvdr
-```
-
-2. Create and activate a Python virtual environment:
-```bash
-uv venv -p python3.9 .venv
-source .venv/bin/activate
-```
-
-3. Install dependencies:
-```bash
-pip install --upgrade pip
-uv sync  # requires the `uv` package for managing virtual environments
-```
-
 ---
 
 ## ✅ Testing the installation
@@ -83,6 +62,16 @@ python -m unittest discover -s tests
 To quickly test the cMVDR implementation, run the demo script:
 ```bash
 source script/run_demo.sh
+```
+
+## 🖥 Using `cmvdr` and `cmvdr-eval` from the command line
+After installation, you can use the `cmvdr` and `cmvdr-eval` command line tools.
+This is the easiest way to apply the cMVDR beamformer and evaluate its performance.
+`cmvdr` runs the beamforming algorithm on a specified file or folder, while `cmvdr-eval` evaluates the quality of the output.
+For usage instructions, run:
+```bash
+cmvdr --help
+cmvdr-eval --help
 ```
 
 ## 🧪 Reproducing paper experiments
@@ -113,7 +102,7 @@ source script/run_all.sh
 python main.py --data_type synthetic  # or instruments
 ```
 
-## 🎵 Get cMVDR output for your own audio files (inference)
+## 🎵 Get cMVDR output for your own audio files (inference with script)
 To apply the cMVDR beamformer to your own audio files, you can use the inference script.
 This script processes audio files in a specified folder and saves the output to another folder.
 
@@ -127,6 +116,11 @@ Specify the folder containing audio files in the `configs/inference_cmvdr.yaml` 
 data:
   input_dir: ../datasets/test_cmvdr/noisy
   output_dir: ../datasets/test_cmvdr/noisy_output
+```
+
+As an alternative, you can run the script directly from the command line, using for example the demo audio files:
+```bash
+cmvdr --input_dir ./demos/noisy --output_dir ./demos/noisy_output
 ```
 
 ### 📝 Notes
