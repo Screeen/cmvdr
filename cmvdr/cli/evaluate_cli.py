@@ -4,7 +4,7 @@ from cmvdr.eval.evaluate_folder import evaluate_audio_files
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate audio files in a folder.")
-    parser.add_argument("-d", "--folder_denoised",
+    parser.add_argument("-d", "--folder_denoised", required=True,
                         type=str, help="Path to the folder containing denoised audio files.")
 
     parser.add_argument("-r", "--folder_reference",
@@ -17,8 +17,6 @@ def main():
                         default=False)
 
     args = parser.parse_args()
-    if args.folder_denoised is None:
-        raise ValueError("The folder_denoised argument must be provided.")
 
     evaluate_audio_files(args.folder_denoised, args.folder_reference, sort_results_by_snr=args.sort_by_snr)
 
