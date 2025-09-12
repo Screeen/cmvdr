@@ -25,8 +25,8 @@ else
 fi
 
 # Run the Python script and store logs in log/
-PYTHONUNBUFFERED=1 python "$PROJECT_ROOT/main.py" --data_type synthetic 2>&1 | tee "$LOG_DIR/synthetic_$TIMESTAMP.log"
-PYTHONUNBUFFERED=1 python "$PROJECT_ROOT/main.py" --data_type instruments 2>&1 | tee "$LOG_DIR/instruments_$TIMESTAMP.log"
+PYTHONUNBUFFERED=1 python "$PROJECT_ROOT/main.py" -c synthetic 2>&1 | tee "$LOG_DIR/synthetic_$TIMESTAMP.log"
+PYTHONUNBUFFERED=1 python "$PROJECT_ROOT/main.py" -c real_noises 2>&1 | tee "$LOG_DIR/real_noises_$TIMESTAMP.log"
 
 # Wait for any single key press before closing
 read -n1 -s -r -p $'\nPress any key to exit...' KEY
