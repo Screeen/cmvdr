@@ -7,11 +7,13 @@ from cmvdr.util import utils as u
 u.set_plot_options(use_tex=True)
 
 # Open pickled image from file
-common_path = r"./src/figs/"
+# common_path = r"./src/figs/"
+# /Users/giovannibologni/Documents/TU-Delft/Code-parent/CyclicBeamforming/zz_cyclic_beamforming
+common_path = Path("../../CyclicBeamforming/zz_cyclic_beamforming/figs").expanduser().resolve()
 # delta_path = Path(common_path) / "2025-07-15" / "16h53"
 # times_path = Path(common_path) / "2025-07-15" / "16h54"
-delta_path = Path(common_path) / "2025-08-08" / "17h47"
-times_path = Path(common_path) / "2025-08-08" / "17h52"
+times_path = Path(common_path) / "2025-08-08" / "17h47"
+delta_path = Path(common_path) / "2025-08-08" / "17h52"
 fig_delta_path = delta_path / "figs_pkl" / "DeltaSI-SDR_dB_vs_Noise_inharmonicity_percent_00.pkl"
 fig_times_path = times_path / "figs_pkl" / "DeltaSI-SDR_dB_vs_Noise_inharmonicity_percent_00.pkl"
 fig_delta_path = Path(fig_delta_path).expanduser().resolve()
@@ -94,9 +96,9 @@ for fig in [fig_delta, fig_times]:
         # Modify style for specific lines
         if label == cmvdr_times_label:
             plot_kwargs["marker"] = 'o'
-            plot_kwargs["color"] = 'green'
+            plot_kwargs["color"] = 'tab:green'
             plot_kwargs["markerfacecolor"] = 'none'
-            plot_kwargs["markeredgecolor"] = 'green'
+            plot_kwargs["markeredgecolor"] = 'tab:green'
 
         new_ax.plot(*line.get_data(), label=label, **plot_kwargs)
 
@@ -157,8 +159,8 @@ new_ax.set_xlim(ref_ax.get_xlim())
 new_ax.set_ylim(ref_ax.get_ylim())
 
 # Match legend font size and placement
-new_fig.legend(fontsize=legend_font_size, handletextpad=0.4, borderaxespad=0.3, ncols=3,
-               columnspacing=1.2, loc='outside upper center')
+new_fig.legend(fontsize=legend_font_size, handletextpad=0.4, borderaxespad=0.3, ncols=1,
+               columnspacing=1.2, loc='outside right')
 
 # Match axis label font sizes
 new_ax.set_xlabel(ref_ax.get_xlabel(), fontsize=font_size, labelpad=2)
@@ -175,6 +177,7 @@ output_path = delta_path / "DeltaSI-SDR_dB_vs_Noise_inharmonicity_percent_00_com
 output_path = Path(output_path).expanduser().resolve()
 new_fig.savefig(output_path, format='pdf',
                 dpi=fig_delta.dpi, bbox_inches='tight', pad_inches=0.1)
+print(f"Combined figure saved to: {output_path}")
 
 
 

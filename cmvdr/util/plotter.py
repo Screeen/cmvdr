@@ -260,8 +260,6 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
     if not result_by_metric or not metrics_list or not algorithms:
         return None
 
-    plot_area_size = 3.5
-
     # Get the display names of the metrics, e.g., 'STOI', ...
     metrics_list_display_name = [get_metric_display_name_with_type(metric, is_for_export=use_tex)
                                  for metric in metrics_list]
@@ -301,6 +299,7 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
             fig.show()
 
     else:  # print all metrics in one figure (debugging)
+        plot_area_size = 3.5
         if num_plots < 3:
             fig = plt.figure(figsize=(1 + plot_area_size * 0.9, 1 + num_plots * plot_area_size), dpi=150,
                              constrained_layout=True)
