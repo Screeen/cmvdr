@@ -71,7 +71,35 @@ This is the easiest way to apply the cMVDR beamformer and evaluate its performan
 For usage instructions, run:
 ```bash
 cmvdr --help
+usage: cmvdr [-h] -i INPUT_PATH [-o OUTPUT_PATH] [-n NOISE_PATH] [-v]
+
+Run cMVDR inference on a single file or a folder of audio files.
+
+options:
+  -h, --help            show this help message and exit
+  -i INPUT_PATH, --input_path INPUT_PATH
+                        Path to the input audio file or folder.
+  -o OUTPUT_PATH, --output_path OUTPUT_PATH
+                        Path to the output folder. If not provided, output will be saved in the same folder as input.
+  -n NOISE_PATH, --noise_path NOISE_PATH
+                        Path to the noise audio file or folder (optional, to estimate noise frequency). To match input
+                        files, append _fileid_123.wav to the noise and the noisy files.
+  -v, --verbose         If set, print detailed logs to the console.
+```
+and
+```bash
 cmvdr-eval --help
+usage: cmvdr-eval [-h] -d FOLDER_DENOISED [-r FOLDER_REFERENCE] [--sort-by-snr]
+
+Evaluate audio files in a folder.
+
+options:
+  -h, --help            show this help message and exit
+  -d FOLDER_DENOISED, --folder_denoised FOLDER_DENOISED
+                        Path to the folder containing denoised audio files.
+  -r FOLDER_REFERENCE, --folder_reference FOLDER_REFERENCE
+                        Path to the folder containing clean reference audio files (optional).
+  --sort-by-snr         Sort results by SNR brackets (optional). Default is False.
 ```
 
 ## 🧪 Reproducing paper experiments
