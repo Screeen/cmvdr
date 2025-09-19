@@ -14,7 +14,7 @@ num_reps = 3
 markers = ['o', 'x', 's', 'D', '*', 'v', 'p', '>', 'h', '^', '|', '<', '+', '_'] * num_reps
 
 line_styles = ['-', '--', ':', '-.', '-', '--', '-.', ':', '-', '--', '-.', ':', '-', '--', '-.', ':'] * num_reps
-colors = ['tab:blue', 'tab:orange', 'tab:brown', 'tab:red', 'tab:brown', 'tab:purple',
+colors = ['tab:blue', 'tab:orange', 'tab:brown', 'tab:red', 'tab:purple',
           'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan'] * num_reps
 
 
@@ -383,7 +383,7 @@ def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, pr
 
         # Average results over all variations of the parameter, so that we have a table with the average results
         if print_summary:
-            # Create and print the table
+            from prettytable import PrettyTable
             table = PrettyTable()
             table.field_names = ["Algorithms"] + [str(x) for x in plot_args_['algorithms']]
 
@@ -880,7 +880,7 @@ def plot_rmse_before_average(signals, dft_props, ref_clean='wet_rank1', which_ax
 
     if all_zeros:
         warnings.warn("Skip error per freq plot, all zeros")
-        return
+        return None
 
     # Plot the RMSE
     fig = plt.figure(figsize=(5, 4), dpi=300)
