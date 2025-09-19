@@ -77,8 +77,64 @@ def decapitalize(s):
     return s[0].lower() + s[1:]
 
 
+def assign_color_and_marker_to_algorithm(algo_lower, algo_index=0):
+
+    color = colors[algo_index]
+    marker = markers[algo_index]
+
+    if 'pfcmvdr' in algo_lower and 'wl' not in algo_lower:
+        color = '#ab2c32'
+        marker = 'p'
+    elif 'cmvdr' in algo_lower and 'wl' not in algo_lower:
+        color = '#dc2f02'  # red
+        marker = 's'
+        if get_variant_display_name(
+                'oracle') in algo_lower or 'oracle' in algo_lower:  # should be checked first because + is part of ++
+            color = '#faa307'  # yellow
+            marker = '^'
+        elif get_variant_display_name('semi-oracle') in algo_lower or 'semi-oracle' in algo_lower:
+            color = '#e85d04'  # orange
+            marker = 'D'
+    elif 'clcmv' in algo_lower:
+        color = 'tab:blue'
+    elif 'cmwf' in algo_lower:
+        color = '#dc2f02'  # red
+        marker = 's'
+        if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
+            color = '#faa307'  # yellow
+            marker = '^'
+        elif get_variant_display_name('semi-oracle') in algo_lower:
+            color = '#e85d04'  # orange
+            marker = 'D'
+    elif 'mwf' in algo_lower:
+        color = '#68489C'  # 'tab:blue'
+        marker = 'x'
+        if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
+            color = 'tab:cyan'
+            marker = '*'
+        elif get_variant_display_name('semi-oracle') in algo_lower:
+            color = 'tab:blue'
+            marker = '+'
+    elif 'mvdr' in algo_lower and 'wl' not in algo_lower:
+        color = '#68489C'  # 'tab:blue'
+        marker = 'x'
+        if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
+            color = 'tab:cyan'
+            marker = '*'
+        elif get_variant_display_name('semi-oracle') in algo_lower:
+            color = 'tab:blue'
+            marker = '+'
+    else:
+        # Use same colour for same variant, e.g. for MWF [blind] and cMWF [blind]
+        if 'cmwf' in algo_lower:
+            color = colors[algo_index - 1]  # this skips some colors
+
+    return color, marker
+
+
 def plot_results_single_metric(ax, varying_param_values, result_single_metric, metric_display_name, algorithms,
-                               name_varying_param, add_date_to_title=True, show_title=True, show_legend=True):
+                               name_varying_param, add_date_to_title=True, show_title=True, show_legend=True,
+                               assign_color_marker_automatic=True):
     """
     Plot the results of a single metric vs a varying parameter.
 
@@ -112,79 +168,14 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
         legend_font_size = 7
         title = f'{metric_display_name} vs {decapitalize(name_varying_param)}'
 
-        # Old font sizes
-        # font_size = 'large'
-        # font_size_ticks_labels = 'large'
-        # legend_font_size = 'medium'
-        # title_font_size = 'x-large'
-        # title = f'{metric_display_name} vs {decapitalize(name_varying_param)}'
-
     # Algorithms: ['Noisy', 'MWF [blind] ', 'cMWF [blind] (prop.)', 'MWF [oracle] ', 'cMWF [oracle] (prop.)', 'MWF [super-oracle] ', 'cMWF [super-oracle] (prop.)']
-
     for algo_index, algo in enumerate(algorithms):
         res_single_metric_single_algo = result_single_metric[algo_index]
-
         algo_lower = algo.lower()
-
-        line_style = 'solid'
-        line_width = 1.2
-        marker = markers[algo_index]
-        if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
-            line_style = 'dotted'
-            line_width = 0.8
-        elif get_variant_display_name('semi-oracle') in algo_lower:
-            line_style = 'dashed'
-            line_width = 0.9
-
-        # line_width = line_width * 1.2  # increase the line width
-
-        if 'pfcmvdr' in algo_lower and 'wl' not in algo_lower:
-            color = '#ab2c32'
-            marker = 'p'
-
-        elif 'cmvdr' in algo_lower and 'wl' not in algo_lower:
-            color = '#dc2f02'  # red
-            marker = 's'
-            if get_variant_display_name('oracle') in algo_lower or 'oracle' in algo_lower:  # should be checked first because + is part of ++
-                color = '#faa307'  # yellow
-                marker = '^'
-            elif get_variant_display_name('semi-oracle') in algo_lower or 'semi-oracle' in algo_lower:
-                color = '#e85d04'  # orange
-                marker = 'D'
-        elif 'clcmv' in algo_lower:
-            color = 'tab:blue'
-        elif 'cmwf' in algo_lower:
-            color = '#dc2f02'  # red
-            marker = 's'
-            if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
-                color = '#faa307'  # yellow
-                marker = '^'
-            elif get_variant_display_name('semi-oracle') in algo_lower:
-                color = '#e85d04'  # orange
-                marker = 'D'
-        elif 'mwf' in algo_lower:
-            color = '#68489C'  # 'tab:blue'
-            marker = 'x'
-            if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
-                color = 'tab:cyan'
-                marker = '*'
-            elif get_variant_display_name('semi-oracle') in algo_lower:
-                color = 'tab:blue'
-                marker = '+'
-        elif 'mvdr' in algo_lower and 'wl' not in algo_lower:
-            color = '#68489C'  # 'tab:blue'
-            marker = 'x'
-            if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
-                color = 'tab:cyan'
-                marker = '*'
-            elif get_variant_display_name('semi-oracle') in algo_lower:
-                color = 'tab:blue'
-                marker = '+'
-        else:
-            # Use same colour for same variant, e.g. for MWF [blind] and cMWF [blind]
-            color = colors[algo_index]
-            if 'cmwf' in algo_lower:
-                color = colors[algo_index - 1]  # this skips some colors
+        line_style, line_width = assign_line_style(algo_lower)
+        color, marker = colors[algo_index], markers[algo_index]
+        if assign_color_marker_automatic:
+            color, marker = assign_color_and_marker_to_algorithm(algo_lower, algo_index)
 
         # if last dimension is not unitary, it contains (mean, standard deviation = std). Otherwise, only mean is present.
         # Plot the std as a shaded area around the mean
@@ -209,8 +200,6 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
         handles, labels = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         # ax.legend(by_label.values(), by_label.keys(), fontsize=legend_font_size, ncol=1)
-        # Put legend below the plot
-        # num_columns = 3 if len(algorithms) > 4 else 2
         num_columns = len(algorithms) if len(algorithms) > 2 else 1
         ax.get_figure().legend(by_label.values(), by_label.keys(), fontsize=legend_font_size,
                                ncol=num_columns, loc='outside lower center')
@@ -251,10 +240,22 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
     return ax
 
 
+def assign_line_style(algo_lower) -> tuple[str, float]:
+    line_style = 'solid'
+    line_width = 1.2
+    if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
+        line_style = 'dotted'
+        line_width = 0.8
+    elif get_variant_display_name('semi-oracle') in algo_lower:
+        line_style = 'dashed'
+        line_width = 0.9
+    return line_style, line_width
+
+
 def plot_results(varying_param_values, result_by_metric, metrics_list, algorithms, parameter_to_vary='',
                  save_plots=False, separately=False, show_date_plots=True, show_title=True, show_legend=True,
                  use_tex=False, force_no_plots=False, f0_spectrogram=False, target_folder_path=Path('figs'),
-                 y_size_ratio=0.8, **kwargs):
+                 assign_color_marker_automatic=True, y_size_ratio=0.8, **kwargs):
     """ Plot the results of multiple metrics vs a varying parameter. """
 
     if not result_by_metric or not metrics_list or not algorithms:
@@ -286,7 +287,7 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
             ax = plot_results_single_metric(ax, varying_param_values, result_by_metric[metric],
                                             metric_disp_name, algorithms, name_varying_param,
                                             add_date_to_title=show_date_plots, show_title=show_title,
-                                            show_legend=show_legend)
+                                            show_legend=show_legend, assign_color_marker_automatic=assign_color_marker_automatic)
 
             if 'forced_ranges' in kwargs:
                 if metric in kwargs['forced_ranges']:
@@ -554,7 +555,7 @@ def get_metric_display_name(metric):
         return 'SI-SDR [dB]'
     else:
         warnings.warn(f"Light warning: metric {metric} not found in get_metric_display_name")
-        return metric
+        return metric.upper()
 
 
 def get_metric_display_name_with_type(metric_input, is_for_export=False):
