@@ -84,7 +84,7 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
 
     :param ax: Matplotlib axis
     :param varying_param_values: List of values of the varying parameter (e.g., [0, 1, 2, 3, 4, 5])
-    :param result_single_metric: Numpy array of shape (num_algorithms, num_varying_param_values, 3)
+    :param result_single_metric: Numpy array of shape (num_evaluated_algorithms, num_varying_param_values, 3)
     :param metric_display_name: Display name of the metric (e.g., 'STOI')
     :param algorithms: List of algorithms (e.g., ['Noisy', 'MWF [blind]', 'cMWF [blind]', 'MWF [oracle]', ...])
     :param name_varying_param: Name of the varying parameter (e.g., 'f0_err_percent'). This will be displayed on the x-axis.
@@ -145,10 +145,10 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
         elif 'cmvdr' in algo_lower and 'wl' not in algo_lower:
             color = '#dc2f02'  # red
             marker = 's'
-            if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
+            if get_variant_display_name('oracle') in algo_lower or 'oracle' in algo_lower:  # should be checked first because + is part of ++
                 color = '#faa307'  # yellow
                 marker = '^'
-            elif get_variant_display_name('semi-oracle') in algo_lower:
+            elif get_variant_display_name('semi-oracle') in algo_lower or 'semi-oracle' in algo_lower:
                 color = '#e85d04'  # orange
                 marker = 'D'
         elif 'clcmv' in algo_lower:
@@ -211,7 +211,7 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
         # ax.legend(by_label.values(), by_label.keys(), fontsize=legend_font_size, ncol=1)
         # Put legend below the plot
         # num_columns = 3 if len(algorithms) > 4 else 2
-        num_columns = 4
+        num_columns = len(algorithms) if len(algorithms) > 2 else 1
         ax.get_figure().legend(by_label.values(), by_label.keys(), fontsize=legend_font_size,
                                ncol=num_columns, loc='outside lower center')
 
@@ -254,7 +254,7 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
 def plot_results(varying_param_values, result_by_metric, metrics_list, algorithms, parameter_to_vary='',
                  save_plots=False, separately=False, show_date_plots=True, show_title=True, show_legend=True,
                  use_tex=False, force_no_plots=False, f0_spectrogram=False, target_folder_path=Path('figs'),
-                 **kwargs):
+                 y_size_ratio=0.8, **kwargs):
     """ Plot the results of multiple metrics vs a varying parameter. """
 
     if not result_by_metric or not metrics_list or not algorithms:
@@ -279,7 +279,7 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
     if separately:
         for idx, metric in enumerate(result_by_metric.keys()):
             x_size = u.get_plot_width_double_column_latex() / 2  # two figs should fit one column (4 figs in one row)
-            fig = plt.figure(figsize=(x_size, 0.8 * x_size), dpi=150, constrained_layout=True)
+            fig = plt.figure(figsize=(x_size, y_size_ratio * x_size), dpi=300, constrained_layout=True)
             ax = fig.subplots(nrows=1, ncols=1, squeeze=True)
 
             metric_disp_name = metrics_list_display_name[idx]
@@ -550,7 +550,7 @@ def get_metric_display_name(metric):
         return '$E_{\\text{dB}}$'
     elif metric == 'num-misses':
         return 'Num. misses'
-    elif metric == 'sisdr':
+    elif metric == 'sisdr' or metric == 'si-sdr':
         return 'SI-SDR [dB]'
     else:
         warnings.warn(f"Light warning: metric {metric} not found in get_metric_display_name")
