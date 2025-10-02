@@ -124,6 +124,7 @@ class Modulator:
             contained in 'self.alpha_vec_hz_'. """
         # TODO: much faster if we directly store the stft of the modulated signals in the re-arranged form,
         #  instead of storing the STFTs and then reshaping them.
+        warnings.warn("This function is deprecated. Use 'compute_reshaped_modulated_signals' instead.", DeprecationWarning)
 
         P_sum = len(self.alpha_vec_hz_)  # new implementation: this is the sum of all alphas
         M = sig_dict['noisy']['stft'].shape[0]

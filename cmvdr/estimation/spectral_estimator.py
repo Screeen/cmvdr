@@ -19,6 +19,7 @@ class SpectralEstimator:
         wait_len_seconds = cfg_harm['wait_len_seconds']
         # spectral_estimators = ['welch', 'periodogram', ]
         spectral_estimators = ['periodogram', ]
+        nfft = cfg_harm['nfft']
 
         # Wait up to 'wait_len' before estimating harmonics as there might be a transient at the beginning.
         # If signal is too short, wait as much as possible but use as many samples as requested.
@@ -32,10 +33,10 @@ class SpectralEstimator:
         y = {key: {} for key in spectral_estimators}
         for spec_est in spectral_estimators:
             if 'periodogram' in spec_est:
-                f = np.fft.rfftfreq(cfg_harm['nfft'], 1 / fs)
-                x_est = (np.abs(np.fft.rfft(x, n=cfg_harm['nfft'])) ** 2) / cfg_harm['nfft']
+                f = np.fft.rfftfreq(nfft, 1 / fs)
+                x_est = (np.abs(np.fft.rfft(x, n=nfft)) ** 2) / nfft
             elif 'welch' in spec_est:
-                f, x_est = sp.signal.welch(x, fs, window='rect', nfft=cfg_harm['nfft'], nperseg=cfg_harm['nfft'] // 16,
+                f, x_est = sp.signal.welch(x, fs, window='rect', nfft=nfft, nperseg=nfft // 16,
                                            scaling='spectrum')
             else:
                 raise ValueError
@@ -49,13 +50,11 @@ class SpectralEstimator:
 
             peaks = SpectralEstimator.find_spectral_peaks(x_est, f, cfg_harm)
             peaks_hz = f_hz[peaks]
-            peaks_hz_sorted = np.sort(peaks_hz)
-            # print(f"{spec_est = } {len(peaks_hz_sorted) = }, {peaks_hz_sorted}")
 
             y[spec_est]['psd'] = dcopy(x_est)
             y[spec_est]['peaks'] = dcopy(peaks)
             y[spec_est]['peaks_hz'] = dcopy(peaks_hz)
-            y[spec_est]['peaks_hz_sorted'] = dcopy(peaks_hz_sorted)
+            y[spec_est]['peaks_hz_sorted'] = np.sort(peaks_hz)
             y[spec_est]['f_hz'] = dcopy(f_hz)
 
         if do_plots:

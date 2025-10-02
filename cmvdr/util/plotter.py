@@ -280,7 +280,10 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
     if separately:
         for idx, metric in enumerate(result_by_metric.keys()):
             x_size = u.get_plot_width_double_column_latex() / 2  # two figs should fit one column (4 figs in one row)
-            fig = plt.figure(figsize=(x_size, y_size_ratio * x_size), dpi=300, constrained_layout=True)
+            fig = plt.figure(figsize=(x_size, y_size_ratio * x_size), dpi=300, constrained_layout=False)
+
+            # Fixed space for XY plot area (independent of labels)
+            fig.subplots_adjust(left=0.15, right=0.95, bottom=0.15, top=0.95)
             ax = fig.subplots(nrows=1, ncols=1, squeeze=True)
 
             metric_disp_name = metrics_list_display_name[idx]
