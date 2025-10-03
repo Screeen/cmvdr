@@ -111,6 +111,12 @@ class AudioDiskLoader:
         for (idx, part) in enumerate(parts):
             if part == "fileid" and (idx + 1) < len(parts):
                 return parts[idx + 1]
+
+        # Some files are just numbered, e.g., "noise_001.wav". Check for that case: if just two parts and the second
+        # part is numeric, return that as fileid
+        if len(parts) == 2 and parts[1].isdigit():
+            return str(int(parts[1]))  # Return as string without leading zeros
+
         warnings.warn(f"No file ID found in {file_name}. Returning None.")
         return None  # Return None if no file ID is found
 
