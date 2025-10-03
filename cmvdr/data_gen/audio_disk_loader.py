@@ -108,17 +108,30 @@ class AudioDiskLoader:
         # Assuming the file name always contains *fileid_FILEID*
         # Example: "mixture_001_fileid_12345.wav"
         parts = Path(file_name).stem.split('_')
-        for (idx, part) in enumerate(parts):
-            if part == "fileid" and (idx + 1) < len(parts):
-                return parts[idx + 1]
 
         # Some files are just numbered, e.g., "noise_001.wav". Check for that case: if just two parts and the second
         # part is numeric, return that as fileid
+        fileid = None  # Default to None if no fileid found
         if len(parts) == 2 and parts[1].isdigit():
-            return str(int(parts[1]))  # Return as string without leading zeros
+            fileid = parts[1]
+        else:
+            for (idx, part) in enumerate(parts):
+                if part == "fileid" and (idx + 1) < len(parts):
+                    fileid = parts[idx + 1]
+                    break
 
-        warnings.warn(f"No file ID found in {file_name}. Returning None.")
-        return None  # Return None if no file ID is found
+        # Check that the file ID can be converted to integer (validation)
+        try:
+            if fileid is not None:
+                fileid = str(int(fileid))
+        except ValueError:
+            warnings.warn(f"File ID {fileid} for file {file_name} is not a valid integer. ")
+            fileid = None
+
+        if fileid is None:
+            warnings.warn(f"No file ID found in {file_name}. Returning None.")
+
+        return fileid
 
     @staticmethod
     def enrich_with_fileid(files_dict):

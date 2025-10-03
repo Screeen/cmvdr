@@ -23,6 +23,7 @@ import numpy as np
 from tqdm import tqdm
 import cmvdr.eval.metrics_manager as metrics_manager
 from cmvdr.util import config
+from data_gen.audio_disk_loader import AudioDiskLoader
 
 
 def load_audio_files(folder, sr=None):
@@ -275,7 +276,7 @@ def enrich_with_fileid(files_dict):
     """
     for file_name, data in files_dict.items():
 
-        data['fileid'] = find_id_from_filename(file_name)
+        data['fileid'] = AudioDiskLoader.find_id_from_filename(file_name)
         # Check that the file ID can be converted to integer (validation)
         try:
             if data['fileid'] is not None:
@@ -299,25 +300,6 @@ def enrich_with_snr(files_dict):
             data['SNR'] = None
 
     return files_dict
-
-
-def find_id_from_filename(file_name):
-    """
-    Extract file ID from the file name.
-    Args:
-        file_name (str): Name of the file. Example: noisy_fileid_9_book_03576_chp_0017_reader_02708_7_noise_004237_snr-4_tl-16.wav
-    Returns:
-        str: Extracted file ID.
-    """
-
-    # Assuming the file name always contains *fileid_FILEID*
-    # Example: "mixture_001_fileid_12345.wav"
-    parts = Path(file_name).stem.split('_')
-    for (idx, part) in enumerate(parts):
-        if part == "fileid" and (idx + 1) < len(parts):
-            return parts[idx + 1]
-    warnings.warn(f"No file ID found in {file_name}. Returning None.")
-    return None  # Return None if no file ID is found
 
 
 def find_snr_from_filename(file_name):
