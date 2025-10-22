@@ -12,7 +12,7 @@ Applicable to speech enhancement, hearing aids, smart devices, and acoustic scen
 <br>
 <br>
 <div align="center">
-  <img src="pics/detailed_scheme.png" alt="Overview of results on synthetic data" width="500"/>
+  <img src="pics/detailed_scheme.png?" alt="Overview of results on synthetic data" width="500"/>
 </div>
 <br>
 <br>
