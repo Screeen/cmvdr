@@ -1,26 +1,33 @@
 # cMVDR: Cyclic minimum-variance distortionless-response beamformer
-Code accompanying the paper "cMVDR: Cyclic minimum-variance distortionless-response beamformer", 
-to be submitted for publication.
+Python implementation of the cyclic MVDR beamformer — an extension of the classic MVDR that exploits both spatial and spectral correlations to better suppress almost-periodic noise (e.g., engines, fans, musical instruments).
 
+By exploiting correlations across microphones and frequency components, the cyclic minimum-variance distortionless-response (cMVDR) beamformer achieves improved noise reduction, especially in low signal-to-noise ratio (SNR) scenarios.
+The package includes tools for estimating resonant frequencies via periodogram analysis and computing optimal frequency shifts for inharmonic signals.
+
+Applicable to speech enhancement, hearing aids, smart devices, and acoustic scene analysis.
+
+:book: Paper https://arxiv.org/abs/2510.18391v1
+
+:desktop_computer: Code https://github.com/Screeen/cmvdr/
+<br>
+<br>
 <div align="center">
   <img src="pics/detailed_scheme.png" alt="Overview of results on synthetic data" width="500"/>
 </div>
-
-The paper proposes a new beamforming method leveraging the cyclostationarity of noise signals.  
-By exploiting correlations across microphones and frequency components, the cyclic minimum-variance 
-distortionless-response (cMVDR) beamformer achieves improved noise reduction, 
-especially in low signal-to-noise ratio (SNR) scenarios.
+<br>
+<br>
+The paper "cMVDR: Cyclic minimum-variance distortionless-response beamformer" is under consideration for publication in a journal.
 
 ---
 
 ## 📦 Installation
 
 ### 📋 Prerequisites
-- Python 3.9+ (for compatibility with librosa)
-- Tested on macOS 14.4.1 but should run on most Linux systems.
+- Python 3.9+ (for compatibility with librosa). Tested on Python 3.11 too.
+- Tested on macOS 14.4.1 and on Ubuntu 24.04.3 LTS.
 
 ### 1️⃣ `pip` installation
-The package is structured as a proper Python package and can be installed using pip:
+The Python package can be cloned using pip and installed:
 
 1. Clone the repository:
 ```bash
