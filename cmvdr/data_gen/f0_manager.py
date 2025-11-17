@@ -640,7 +640,9 @@ class F0Manager:
                                   max_rel_dist_alpha=1.e-3, use_filters=False,
                                   max_freq_cyclic_hz=cfg_cyc['freq_range_cyclic'][1])
 
-        max_bin = int(np.ceil((3 * SFT.delta_f + np.max(np.abs(harmonic_freqs_est))) / SFT.delta_f))
+        max_bin = -1
+        if harmonic_freqs_est.size > 0:
+            max_bin = int(np.ceil((3 * SFT.delta_f + np.max(np.abs(harmonic_freqs_est))) / SFT.delta_f))
         rho = CoherenceManager.compute_coherence(sig, SFT, mod_coherence, max_bin, min_relative_power=1.e+3)
         if 0:
             cc0 = np.where(mod_coherence.alpha_vec_hz_ == 0)[0][0]
