@@ -69,21 +69,24 @@ class BeamformerManager:
 
                 self.mvdr.rtf_needs_estimation = self.mvdr.check_if_rtf_needs_estimation(idx_chunk)
                 weights[bf_name], error_flags[bf_name], cond_num_cov[bf_name], singular_values[bf_name] = (
-                    self.mvdr.compute_mvdr_beamformers(cov_dict[name_input_sig + '_nb'], cov_dict['noise_nb'], bf_variant, speech_rtf_oracle))
+                    self.mvdr.compute_mvdr_beamformers(cov_dict[name_input_sig + '_nb'], cov_dict['noise_nb'],
+                                                       bf_variant, speech_rtf_oracle))
 
             elif bf_first_name == 'cmvdr':
 
                 self.mvdr.rtf_needs_estimation = self.mvdr.check_if_rtf_needs_estimation(idx_chunk)
                 weights[bf_name], error_flags[bf_name], cond_num_cov[bf_name], singular_values[bf_name] = (
                     self.mvdr.compute_cyclic_mvdr_beamformers(cov_dict, bf_variant, which_bins_cyclic_bfs,
-                                                              speech_rtf_oracle, name_input_sig=name_input_sig))
+                                                              name_input_sig=name_input_sig,
+                                                              speech_rtf_oracle=speech_rtf_oracle,
+                                                              P_all=self.mvdr.harmonic_info.get_num_shifts_all_frequencies()))
 
             elif bf_first_name == 'cmvdr-wl':
 
                 self.mvdr.rtf_needs_estimation = self.mvdr.check_if_rtf_needs_estimation(idx_chunk)
                 weights[bf_name], error_flags[bf_name], cond_num_cov[bf_name], singular_values[bf_name] = (
                     self.mvdr.compute_cyclic_mvdr_beamformers_wl(cov_dict, bf_variant, which_bins_cyclic_bfs,
-                                                              speech_rtf_oracle, name_input_sig=name_input_sig))
+                                                                 speech_rtf_oracle, name_input_sig=name_input_sig))
 
             # elif bf_first_name == 'clcmv':
             #     weights[bf_name], error_flags[bf_name] = self.compute_cyclic_lcmv_beamformers(C_rtf,
@@ -91,15 +94,12 @@ class BeamformerManager:
             #                                                                                   which_bins_cyclic_bfs)
 
             elif bf_first_name == 'mwf':
-                raise NotImplementedError(f"Adjust implementation to use cov_dict instead of ch (class)")
                 weights[bf_name], error_flags[bf_name] = (
-                    self.mwf.compute_narrowband_mwf_beamformers(ch, bf_variant))
+                    self.mwf.compute_narrowband_mwf_beamformers(cov_dict, bf_variant))
 
             elif bf_first_name == 'cmwf':
-                raise NotImplementedError(f"Adjust implementation to use cov_dict instead of ch (class)")
-                # print("DEBUG keep P eigenvalues for the noise covariance matrix (cMWF)")
                 weights[bf_name], error_flags[bf_name] = (
-                    self.mwf.compute_cyclic_mwf_beamformers(ch, bf_variant, processed_bins=which_bins_cyclic_bfs))
+                    self.mwf.compute_cyclic_mwf_beamformers(cov_dict, bf_variant, processed_bins=which_bins_cyclic_bfs))
 
             elif bf_first_name == 'mf' and bf_variant == 'semi-oracle':  # matched filter
                 raise NotImplementedError(f"Adjust implementation to use cov_dict instead of ch (class)")
@@ -167,6 +167,15 @@ class BeamformerManager:
 
     def beamform_signals(self, noisy_stft, noisy_mod_stft_3d, slice_frames, weights,
                          mod_amount=F0ChangeAmount.no_change):
+        """
+        Beamform the signals using the provided weights.
+        :param noisy_stft: np.ndarray of shape (M, K_nfft_real, L3_num_frames)
+        :param noisy_mod_stft_3d: np.ndarray of shape (num_harmonic_sets, M * P_max, K_nfft_real, L3_num_frames)
+        :param slice_frames: slice object indicating the frames to process
+        :param weights: dict of beamformer weights, each of shape (M * P, K_nfft_real)
+        :param mod_amount: F0ChangeAmount enum indicating the amount of F0 change
+        :return: dict of beamformed signals, each of shape (K_nfft_real, L3_num_frames)
+        """
 
         if self.harmonic_info is None:
             raise ValueError("harmonic_info must be set before calling beamform_signals")
@@ -182,7 +191,8 @@ class BeamformerManager:
         use_local_coherence = np.any(self.harmonic_info.harmonic_sets_before_coh)
 
         if K_nfft_real % 2 == 0:
-            warnings.warn(f"{K_nfft_real = }, but it is given by K // 2 + 1 which is an odd number. Check the STFT parameters.")
+            warnings.warn(
+                f"{K_nfft_real = }, but it is given by K // 2 + 1 which is an odd number. Check the STFT parameters.")
 
         # Apply cyclic beamformers to modulated signals, stationary beamformers to the normal STFT signal
         bfd = {}
@@ -207,7 +217,8 @@ class BeamformerManager:
                 for kk in range(K_nfft_real):
                     harmonic_set_idx, P = self.harmonic_info.get_harmonic_set_and_num_shifts(kk)
                     if use_local_coherence:  # local coherence filtering only
-                        harmonic_set_idx, _ = self.harmonic_info.get_harmonic_set_and_num_shifts(kk, before_coherence=True)
+                        harmonic_set_idx, _ = self.harmonic_info.get_harmonic_set_and_num_shifts(kk,
+                                                                                                 before_coherence=True)
 
                     # If fundamental frequency is changing, ignore harmonic components when beamforming
                     if mod_amount == F0ChangeAmount.large:
