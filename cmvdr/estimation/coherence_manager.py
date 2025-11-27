@@ -51,7 +51,7 @@ class CoherenceManager:
 
         # Calculate the powers at different frequency shifts (pp) for all frequency bins (kk)
         psds = np.mean(np.abs(mod) ** 2, axis=-1)  # squared magnitude averaged over time-frames
-        psds = np.maximum(psds, np.max(psds) / min_relative_power)  # limit value from below to avoid artefacts when diving by this
+        psds = np.maximum(psds, np.max(psds[cc0]) / min_relative_power)  # limit value from below to avoid artefacts when diving by this
 
         # rho = CoherenceManager.compute_coherence_internal(mod, mod_c, psds, alpha, cc0, SFT.delta_f, SFT.fs)
         rho = CoherenceManager.compute_coherence_internal_fast(mod, mod_c, psds, alpha, cc0, SFT.delta_f, SFT.fs)
