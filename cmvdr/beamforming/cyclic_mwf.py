@@ -16,7 +16,7 @@ class CyclicMWF(Beamformer):
     def compute_narrowband_mwf_beamformers(self, ch, which_variant='blind'):
         # MWF beamformer (narrowband). Can be oracle, semi-oracle, or blind.
 
-        K_nfft, M = ch.noisy_nb.shape[:2]
+        K_nfft, M = ch['noisy_nb'].shape[:2]
         K_nfft_real = K_nfft if K_nfft % 2 != 0 else K_nfft // 2 + 1
         weights_mwf = np.zeros((M, K_nfft), dtype=np.complex128)
         error_flag = np.zeros(K_nfft, dtype=bool)
@@ -25,18 +25,18 @@ class CyclicMWF(Beamformer):
 
         if which_variant == 'oracle':
             for kk in range(K_nfft_real):
-                weights_mwf[:, kk] = scipy.linalg.solve(ch.noisy_nb[kk] + loadings[kk] * np.eye(M),
-                                                        ch.cross_noisy_early_nb[kk],
+                weights_mwf[:, kk] = scipy.linalg.solve(ch['noisy_nb'][kk] + loadings[kk] * np.eye(M),
+                                                        ch['cross_noisy_early_nb'][kk],
                                                         assume_a='pos')
         elif which_variant == 'semi-oracle':
             for kk in range(K_nfft_real):
                 weights_mwf[:, kk] = scipy.linalg.solve(
-                    ch.wet_nb[kk] + self.mu * ch.noise_nb[kk] + loadings[kk] * np.eye(M), ch.wet_nb[kk][:, 0],
+                    ch['wet_nb'][kk] + self.mu * ch['noise_nb'][kk] + loadings[kk] * np.eye(M), ch['wet_nb'][kk][:, 0],
                     assume_a='pos')
         elif which_variant == 'blind':
 
             # Blind multichannel Wiener filter (MWF) beamformer (narrowband, ALL frequencies)
-            K_nfft, M = ch.noisy_nb.shape[:2]
+            K_nfft, M = ch['noisy_nb'].shape[:2]
             K_nfft_real = K_nfft if K_nfft % 2 != 0 else K_nfft // 2 + 1
             weights_mwf = np.zeros((M, K_nfft), dtype=np.complex128)
             error_flag = np.zeros(K_nfft, dtype=bool)
@@ -44,7 +44,7 @@ class CyclicMWF(Beamformer):
 
             for kk in range(K_nfft_real):
                 weights_mwf[:, kk], error_flag[kk] = self.compute_narrowband_mwf_beamformer_blind_single_freq(
-                    ch.noisy_nb[kk], ch.noise_nb[kk], mu=self.mu, loading=loadings[kk])
+                    ch['noisy_nb'][kk], ch['noise_nb'][kk], mu=self.mu, loading=loadings[kk])
 
         else:
             raise ValueError(f"Unknown variant for MWF beamformer: {which_variant}")
@@ -69,32 +69,32 @@ class CyclicMWF(Beamformer):
         return weights_mwf_kk, error_flag_kk
 
     # Cyclic MWF beamformers
-    def compute_cyclic_mwf_beamformers(self, ch, which_variant='blind', processed_bins=np.array([])):
+    def compute_cyclic_mwf_beamformers(self, cov_dict, which_variant='blind', processed_bins=np.array([])):
         # MWF beamformer (cyclic, multiband, wideband)
 
-        K_nfft, M = ch.noisy_nb.shape[:2]
+        K_nfft, M = cov_dict['noisy_nb'].shape[:2]
         K_nfft_real = K_nfft if K_nfft % 2 != 0 else K_nfft // 2 + 1
-        P_max = ch.noisy_wb.shape[-1] // M
+        P_max = cov_dict['noisy_wb'].shape[-1] // M
         error_flag = np.zeros(K_nfft, dtype=bool)
         weights_mwf_cyclic = np.zeros((M * P_max, K_nfft), dtype=np.complex128, order='F')
 
         P_all = self.harmonic_info.get_num_shifts_all_frequencies()
-        loadings_wb = self.get_loading_wb(which_variant, ch, *self.loadings_cfg, P_all)
+        loadings_wb = self.get_loading_wb(which_variant, cov_dict, *self.loadings_cfg, P_all)
 
         if which_variant == 'oracle':  # oracle MWF: uses cov_noisy_wb and cross_cov_noisy_early_wb from ground truth
             for kk in range(K_nfft_real):
                 MP = M * P_all[kk] if kk in processed_bins else M
                 try:
                     weights_mwf_cyclic[:MP, kk] = scipy.linalg.solve(
-                        ch.noisy_wb[kk, :MP, :MP] + loadings_wb[kk] * np.eye(MP),
-                        ch.cross_noisy_early_wb[kk, :MP],
+                        cov_dict['noisy_wb'][kk, :MP, :MP] + loadings_wb[kk] * np.eye(MP),
+                        cov_dict['cross_noisy_early_wb'][kk, :MP],
                         assume_a='pos')
                 except np.linalg.LinAlgError:
                     # print(f"LinAlgError for bin {kk} in cMWF oracle.")
                     error_flag[kk] = True
                     weights_mwf_cyclic[:MP, kk] = scipy.linalg.solve(
-                        ch.noisy_wb[kk, :MP, :MP] + loadings_wb[kk] * np.eye(MP),
-                        ch.cross_noisy_early_wb[kk, :MP],
+                        cov_dict['noisy_wb'][kk, :MP, :MP] + loadings_wb[kk] * np.eye(MP),
+                        cov_dict['cross_noisy_early_wb'][kk, :MP],
                         assume_a='her')
 
         elif which_variant == 'semi-oracle':  # semi-oracle MWF: uses cov_wet and cov_noise from ground truth
@@ -103,9 +103,9 @@ class CyclicMWF(Beamformer):
                 MP = M * P_all[kk] if kk in processed_bins else M
 
                 # Ignore spectral correlations for the noise
-                cov_noise_wb_kk = ch.noise_wb[kk, :MP, :MP]
-                cov_noise_wb_kk = u.extract_block_diag(cov_noise_wb_kk, M)
-                cov_wet_wb_kk = ch.wet_wb[kk, :MP, :MP]
+                cov_noise_wb_kk = cov_dict['noise_wb'][kk, :MP, :MP]
+                # cov_noise_wb_kk = u.extract_block_diag(cov_noise_wb_kk, M)
+                cov_wet_wb_kk = cov_dict['wet_wb'][kk, :MP, :MP]
 
                 try:
                     # Compute the weights by solving the linear system
@@ -122,7 +122,7 @@ class CyclicMWF(Beamformer):
                                            assume_a='her'))
 
         elif which_variant == 'blind':
-            weights_mwf_cyclic, error_flag = self.compute_cyclic_mwf_beamformer_blind(ch, processed_bins=processed_bins)
+            weights_mwf_cyclic, error_flag = self.compute_cyclic_mwf_beamformer_blind(cov_dict, processed_bins=processed_bins)
 
         else:
             raise ValueError(f"Unknown variant for cyclic MWF beamformer: {which_variant}")
@@ -136,15 +136,17 @@ class CyclicMWF(Beamformer):
         # processed_bins: indices of the bins for which cyclic beamformers are computed
         # mu: regularization parameter
 
-        K_nfft, M = ch.noisy_nb.shape[:2]
+        K_nfft, M = ch['noisy_nb'].shape[:2]
         K_nfft_real = K_nfft if K_nfft % 2 != 0 else K_nfft // 2 + 1
-        P_max = ch.noisy_wb.shape[-1] // M
+        P_max = ch['noisy_wb'].shape[-1] // M
         weights_mwf_cyclic = np.zeros((M * P_max, K_nfft), dtype=np.complex128, order='F')
         error_flag = np.zeros(K_nfft, dtype=bool)
 
         # Loadings are different between 'normal' and 'cyclic' variants because they are computed from different
         # covariance matrices
         P_all = self.harmonic_info.get_num_shifts_all_frequencies()
+        if P_all.size == 0:
+            P_all = np.ones(K_nfft_real, dtype=int)
         loadings_wb = self.get_loading_wb('blind', ch, *self.loadings_cfg, P_all)
         loadings_nb = self.get_loading_nb('blind', ch, *self.loadings_cfg)
 
@@ -154,26 +156,28 @@ class CyclicMWF(Beamformer):
             if P == 1 or kk not in processed_bins:
                 weights_mwf_cyclic[:M, kk], error_flag[kk] = (
                     self.compute_narrowband_mwf_beamformer_blind_single_freq(
-                        ch.noisy_nb[kk], ch.noise_nb[kk], mu=mu, loading=loadings_nb[kk]))
+                        ch['noisy_nb'][kk], ch['noise_nb'][kk], mu=mu, loading=loadings_nb[kk]))
             else:
                 # Ignore spectral correlations for the noise
-                cov_noise_wb_kk = ch.noise_wb[kk, :MP, :MP]
+                cov_noise_wb_kk = ch['noise_wb'][kk, :MP, :MP]
                 cov_noise_wb_kk = u.extract_block_diag(cov_noise_wb_kk, M)
 
                 # Max rank determined by P
                 max_rank_cov_wet = P_all[kk]
                 # max_rank_cov_wet = 1
 
-                cov_noisy_wb_kk = ch.noisy_wb[kk, :MP, :MP]
+                cov_noisy_wb_kk = ch['noisy_wb'][kk, :MP, :MP]
 
                 # Whitening procedure
-                ea, ev = scipy.linalg.eigh(cov_noisy_wb_kk + loadings_wb[kk] * np.eye(MP),
+                cov_noisy_wb_kk_w = u.extract_block_diag(cov_noisy_wb_kk, M)
+                ea, ev = scipy.linalg.eigh(cov_noisy_wb_kk_w + loadings_wb[kk] * np.eye(MP),
                                            cov_noise_wb_kk + eps * np.eye(MP))
                 error_flag[kk] = np.max(ea) < 1
                 ev_left = cov_noise_wb_kk @ ev
                 ev_left_signal = ev_left[:, -max_rank_cov_wet:]
                 ea_signal = np.diag(np.maximum(eps, ea[-max_rank_cov_wet:] - 1))
                 cov_wet_est = ev_left_signal @ ea_signal @ np.conj(ev_left_signal).T
+                cov_wet_est = u.extract_block_diag(cov_wet_est, M)
 
                 # weights_mwf_cyclic[correlated_indices, kk] = scipy.linalg.solve(
                 #     cov_wet_est + mu * cov_noise_wb_kk + loadings[kk] * np.eye(cov_wet_est.shape[0]),
@@ -195,9 +199,9 @@ class CyclicMWF(Beamformer):
         # Check also "Harmonic beamformers for speech enhancement and dereverberation in the time domain" eq 59
         # where they do tr(A)/N_A * gamma
         if which_variant == 'blind':
-            loadings = np.trace(np.maximum(0, ch.noisy_nb - ch.noise_nb), axis1=-2, axis2=-1).real
+            loadings = np.trace(np.maximum(0, ch['noisy_nb'] - ch['noise_nb']), axis1=-2, axis2=-1).real
         else:  # oracle or semi-oracle
-            loadings = np.trace(ch.wet_nb, axis1=-2, axis2=-1).real
+            loadings = np.trace(ch['wet_nb'], axis1=-2, axis2=-1).real
 
         loadings = np.maximum(np.minimum(loadings, max_val), min_val)
 
@@ -209,9 +213,9 @@ class CyclicMWF(Beamformer):
         # Loadings for reducing condition number of the covariance matrix
 
         if which_variant == 'blind':
-            loadings = np.trace(np.maximum(0, ch.noisy_wb - ch.noise_wb), axis1=-2, axis2=-1).real
+            loadings = np.trace(np.maximum(0, ch['noisy_wb'] - ch['noise_wb']), axis1=-2, axis2=-1).real
         else:  # oracle or semi-oracle
-            loadings = np.trace(ch.wet_wb, axis1=-2, axis2=-1).real
+            loadings = np.trace(ch['wet_wb'], axis1=-2, axis2=-1).real
 
         loadings = np.maximum(np.minimum(loadings, max_val), min_val)
         return loadings
