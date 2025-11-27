@@ -11,11 +11,9 @@ Output:
     Pretty print + rich.table to terminal
 """
 
-import argparse
 import warnings
 from pathlib import Path
 
-import yaml
 import librosa
 from rich.console import Console
 from rich.table import Table
@@ -23,7 +21,7 @@ import numpy as np
 from tqdm import tqdm
 import cmvdr.eval.metrics_manager as metrics_manager
 from cmvdr.util import config
-from data_gen.audio_disk_loader import AudioDiskLoader
+from cmvdr.data_gen.audio_disk_loader import AudioDiskLoader
 
 
 def load_audio_files(folder, sr=None):
