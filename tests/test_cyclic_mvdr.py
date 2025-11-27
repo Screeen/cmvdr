@@ -95,7 +95,9 @@ class CyclicMVDRIntegrationTests(unittest.TestCase):
 
         cyclic_bins = np.array([1, 3], dtype=int)
         # provide an oracle (empty) and call
-        weights, err_flags, cond_num_cov, sv = cm.compute_cyclic_mvdr_beamformers(cov_dict, 'blind', cyclic_bins, speech_rtf_oracle=np.array([]))
+        weights, err_flags, cond_num_cov, sv = cm.compute_cyclic_mvdr_beamformers(cov_dict, 'blind', cyclic_bins,
+                                                                                  speech_rtf_oracle=np.array([]),
+                                                                                  P_all=cm.harmonic_info.get_num_shifts_all_frequencies())
         # weights shape should be (M * P_max, K)
         self.assertEqual(weights.shape, (M * P_max, K))
         self.assertEqual(err_flags.shape, (K,))
