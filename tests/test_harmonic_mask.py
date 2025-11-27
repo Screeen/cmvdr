@@ -53,7 +53,7 @@ class TestModulator(unittest.TestCase):
         M = 2
         P_max = 4
         K = 10
-        harmonic_sets = np.ones(K) * -1
+        harmonic_sets = np.ones(K, dtype=int) * -1
         harmonic_sets[2:4] = 0
         harmonic_sets[5:7] = 1
         harmonic_sets[9] = 2
