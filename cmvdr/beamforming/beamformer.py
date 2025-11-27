@@ -11,8 +11,8 @@ class Beamformer:
     rtf_est_warmup_chunks = 1  # number of initial chunks to estimate RTF
     rtf_est_interval_chunks = 5  # number of chunks after which RTF is re-estimated
 
-    def __init__(self, loadings_cfg: list = None, sig_shape_k_m=None):
-        self.loadings_cfg = loadings_cfg
+    def __init__(self, loadings_cfg: tuple = None, sig_shape_k_m=None):
+        self.loadings_cfg = loadings_cfg  # example: (0, 0, 1000)  # min, max, condition number
         self.rtf_needs_estimation = np.ones(sig_shape_k_m[0], dtype=bool)
 
     def check_if_rtf_needs_estimation(self, idx_chunk, warmup_chunks=rtf_est_warmup_chunks,
