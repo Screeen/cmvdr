@@ -41,7 +41,7 @@ class Player:
         for name, S_dB in signals_spec_db.items():
             fig, ax = plt.subplots(1, 1)
             pcm = librosa.display.specshow(S_dB, sr=fs, x_axis='time', y_axis='mel', fmax=8000,
-                                     vmin=min_val, vmax=max_val, cmap='magma', ax=ax)
+                                           vmin=min_val, vmax=max_val, cmap='magma', ax=ax)
             fig.colorbar(format='%+2.0f dB', mappable=pcm)
             ax.set_title(name)
             fig.tight_layout()
@@ -88,7 +88,7 @@ class Player:
 
         fig_size = u.get_plot_width_double_column_latex(), u.get_plot_width_double_column_latex() * 0.9
         fig, axs = plt.subplots(2, 2, constrained_layout=True, figsize=fig_size,
-                               sharex=True, sharey=True)
+                                sharex=True, sharey=True)
 
         # Step 3: Plot with fixed color scale
         pcm = None
@@ -110,7 +110,7 @@ class Player:
 
         # Colorbar is shared across all subplots (to the right of the 2x2 grid, as tall as 2 rows)
         cbar = fig.colorbar(format='%+2.0fdB', mappable=pcm, ax=axs, orientation='vertical', fraction=0.06, pad=0.04,
-                     aspect=30)
+                            aspect=30)
         cbar.ax.yaxis.set_major_locator(MaxNLocator(nbins=5))  # maximum 4 ticks
         cbar.ax.tick_params(axis='y', pad=1)  # smaller pad brings labels closer to the bar
 
@@ -149,8 +149,11 @@ class Player:
     @staticmethod
     def play_signals(signals_dict_all_variations_time, fs):
         """ Play the signals. """
-        signals = signals_dict_all_variations_time[list(signals_dict_all_variations_time.keys())[1]][0]
-        sett = {'fs': fs, 'max_length_seconds': min(10, int(len(signals['noisy']) / fs)), 'volume': 0.3, 'smoothen_corners_flag': True}
+        signals_dict_all_variations_time = res['signals_dict_all_variations_time']
+        fs = 16000
+        signals = signals_dict_all_variations_time[list(signals_dict_all_variations_time.keys())[0]][0]
+        sett = {'fs': fs, 'max_length_seconds': min(10, int(len(signals['noisy']) / fs)), 'volume': 0.3,
+                'smoothen_corners_flag': True}
 
         if 0:
             u.play(signals['wet'], **sett)
@@ -183,9 +186,10 @@ class Player:
             # for_spectrogram = ['mvdr_semi-oracle', 'cmvdr_semi-oracle', 'noisy']
             # for_spectrogram = ['noisy', 'wet', 'mwf_blind', 'cmwf_blind']
             # for_spectrogram = ['mwf_blind', 'cmwf_blind']
-            for_spectrogram = ['noisy', 'wet_rank1', 'mvdr_blind', 'cmvdr_blind']
-            # for_spectrogram = ['mvdr_blind', 'cmvdr_blind']
+            # for_spectrogram = ['cmvdr-wl_blind', 'wet_rank1', 'mvdr_blind', 'cmvdr_blind']
+            for_spectrogram = ['mvdr_blind', 'cmvdr_blind']
+            from cmvdr.util.player import Player
             Player.plot_mel_spectrograms(signals, for_spectrogram, fs=fs, save_figs=False)
-            player.Player.plot_mel_spectrograms_2_by_2(signals, for_spectrogram, fs=fs, save_figs=False)
+            Player.plot_mel_spectrograms_2_by_2(signals, for_spectrogram, fs=fs, save_figs=False)
             # player.Player.plot_mel_spectrograms_2_by_2(signals, for_spectrogram, fs=fs, save_figs=True)
             # Player.plot_mel_spectrograms(signals, for_spectrogram, fs=fs, save_figs=True)
