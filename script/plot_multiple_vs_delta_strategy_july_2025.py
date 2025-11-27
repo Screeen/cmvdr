@@ -159,8 +159,8 @@ new_ax.set_xlim(ref_ax.get_xlim())
 new_ax.set_ylim(ref_ax.get_ylim())
 
 # Match legend font size and placement
-new_fig.legend(fontsize=legend_font_size, handletextpad=0.4, borderaxespad=0.3, ncols=1,
-               columnspacing=1.2, loc='outside right')
+# new_fig.legend(fontsize=legend_font_size, handletextpad=0.4, borderaxespad=0.3, ncols=1,
+#                columnspacing=1.2, loc='outside right')
 
 # Match axis label font sizes
 new_ax.set_xlabel(ref_ax.get_xlabel(), fontsize=font_size, labelpad=2)
@@ -175,8 +175,8 @@ new_fig.show()
 # Save the new figure
 output_path = delta_path / "DeltaSI-SDR_dB_vs_Noise_inharmonicity_percent_00_combined_legend.pdf"
 output_path = Path(output_path).expanduser().resolve()
-new_fig.savefig(output_path, format='pdf',
-                dpi=fig_delta.dpi, bbox_inches='tight', pad_inches=0.1)
+# new_fig.savefig(output_path, format='pdf',
+#                 dpi=fig_delta.dpi, bbox_inches='tight', pad_inches=0.1)
 print(f"Combined figure saved to: {output_path}")
 
 

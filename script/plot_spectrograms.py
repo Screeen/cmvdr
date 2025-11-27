@@ -154,7 +154,7 @@ new_ax.set_ylim(ref_ax.get_ylim())
 # Match legend font size and placement
 new_ax.legend(fontsize=legend_font_size, handletextpad=0.4, borderaxespad=0.3, ncols=1,
               columnspacing=1.2, loc='upper left',
-    bbox_to_anchor=(1.02, 0.9))  # x=1.02 → a bit outside right, y=0.5 → vertical center
+              bbox_to_anchor=(1.02, 0.9))  # x=1.02 → a bit outside right, y=0.5 → vertical center
 
 # Match axis label font sizes
 new_ax.set_xlabel(ref_ax.get_xlabel(), fontsize=font_size, labelpad=2)
@@ -167,8 +167,8 @@ new_ax.set_title(ref_ax.get_title(), fontsize=title_font_size)
 new_fig.show()
 
 # Save the new figure
-new_fig.savefig(delta_path / "DeltaSI-SDR_vs_Noise_inharmonicity_percent_00_combined.pdf",
-                dpi=fig_delta.dpi, bbox_inches='tight', pad_inches=0.1)
+# new_fig.savefig(delta_path / "DeltaSI-SDR_vs_Noise_inharmonicity_percent_00_combined.pdf",
+#                 dpi=fig_delta.dpi, bbox_inches='tight', pad_inches=0.1)
 
 
 

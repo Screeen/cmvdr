@@ -124,8 +124,10 @@ if x.ndim > 1:
 # x = np.random.normal(size=x.shape)
 # file_name_plot = 'White noise'
 
-plot_downshifted_harmonics = True
-plot_spectrum_ideal_harmonics = 0
+plot_downshifted_harmonics = False
+plot_spectrum_ideal_harmonics = False
+plot_spectrogram_shifted = True
+
 harmonics = 3
 hsize = u.get_plot_width_double_column_latex()
 vsize = hsize * 1.5
@@ -281,3 +283,19 @@ if plot_spectrum_ideal_harmonics:
     cropped_fname = fname_save  # fname_save.replace(".pdf", "_cropped.pdf")
     subprocess.run(["pdfcrop", fname_save, cropped_fname], check=True)
     print(f"Cropped PDF saved to {cropped_fname}")
+
+if plot_spectrogram_shifted:
+    # Plot spectrogram of original sample and frequency-shifted sample
+    from cmvdr.util.player import Player
+    for_spectrogram = ['original', 'shifted1', 'shifted2']
+
+    signals = {}
+    signals['original'] = x
+
+    # Shift by -2 * f0
+    t = np.arange(len(x)) / fs
+    signals['shifted1'] = x * np.exp(-1j * 2 * np.pi * 4 * f0 * t)
+    # Shift by +2 * f0
+    signals['shifted2'] = x * np.exp(-1j * 2 * np.pi * 8 * f0 * t)
+
+    Player.plot_mel_spectrograms(signals, for_spectrogram, fs=fs, save_figs=False)
