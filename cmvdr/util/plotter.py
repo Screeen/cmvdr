@@ -1,6 +1,8 @@
 import copy
 import warnings
 from pathlib import Path
+from typing import Any
+
 import librosa
 import numpy as np
 from datetime import datetime
@@ -18,10 +20,6 @@ colors = ['tab:blue', 'tab:orange', 'tab:brown', 'tab:red', 'tab:purple',
           'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan'] * num_reps
 
 
-# colors = ['tab:brown', 'tab:brown',
-#           'tab:pink', 'tab:gray',
-#           'tab:olive', 'tab:cyan'] * num_reps
-
 # TODO: add entry for 'standard error' in legend
 
 
@@ -36,7 +34,8 @@ def is_tex_plotting_available(force_no_tex=False):
         if result.returncode == 0 and result.stdout.strip():
             return True
         else:
-            warnings.warn("LaTeX is not installed or type1cm.sty not found. Using matplotlib instead of LaTeX for plotting.")
+            warnings.warn(
+                "LaTeX is not installed or type1cm.sty not found. Using matplotlib instead of LaTeX for plotting.")
             return False
     except (FileNotFoundError, subprocess.CalledProcessError):
         warnings.warn(
@@ -78,7 +77,6 @@ def decapitalize(s):
 
 
 def assign_color_and_marker_to_algorithm(algo_lower, algo_index=0):
-
     color = colors[algo_index]
     marker = markers[algo_index]
 
@@ -168,14 +166,12 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
         legend_font_size = 7
         title = f'{metric_display_name} vs {decapitalize(name_varying_param)}'
 
-    # Algorithms: ['Noisy', 'MWF [blind] ', 'cMWF [blind] (prop.)', 'MWF [oracle] ', 'cMWF [oracle] (prop.)', 'MWF [super-oracle] ', 'cMWF [super-oracle] (prop.)']
+    # Algorithms: ['Noisy', 'MWF [blind] ', 'cMWF [blind] (prop.)', 'MWF [oracle] ', 'cMWF [oracle] (prop.)',
+    # 'MWF [super-oracle] ', 'cMWF [super-oracle] (prop.)']
+    algo_styles = choose_algo_styles(algorithms, assign_color_marker_automatic)
     for algo_index, algo in enumerate(algorithms):
         res_single_metric_single_algo = result_single_metric[algo_index]
-        algo_lower = algo.lower()
-        line_style, line_width = assign_line_style(algo_lower)
-        color, marker = colors[algo_index], markers[algo_index]
-        if assign_color_marker_automatic:
-            color, marker = assign_color_and_marker_to_algorithm(algo_lower, algo_index)
+        color, marker, line_style, line_width = algo_styles[algo_index]
 
         # if last dimension is not unitary, it contains (mean, standard deviation = std). Otherwise, only mean is present.
         # Plot the std as a shaded area around the mean
@@ -240,7 +236,35 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
     return ax
 
 
+def choose_algo_styles(algorithms, assign_color_marker_automatic: bool) -> list[Any]:
+    """
+    Choose the color, marker, and line style for each algorithm.
+    If two algorithms have the same style, change the color and marker of the second one.
+    """
+
+    algo_styles = []
+    for algo_index, algo in enumerate(algorithms):
+        line_style, line_width = assign_line_style(algo.lower())
+        if assign_color_marker_automatic:
+            color, marker = assign_color_and_marker_to_algorithm(algo.lower(), algo_index)
+        else:
+            color, marker = colors[algo_index], markers[algo_index]
+        algo_styles.append(AlgoLineStyle(color, marker, line_style, line_width))
+
+    for algo_index, algo in enumerate(algorithms):
+        for prev_index in range(algo_index):
+            style_idx = algo_index
+            while algo_styles[prev_index].color == algo_styles[algo_index].color:
+                algo_styles[algo_index].color = colors[style_idx]
+                style_idx += 1
+            while algo_styles[prev_index].marker == algo_styles[algo_index].marker:
+                algo_styles[algo_index].marker = markers[style_idx]
+                style_idx += 1
+    return algo_styles
+
+
 def assign_line_style(algo_lower) -> tuple[str, float]:
+    """ Assign line style based on algorithm variant (oracle, semi-oracle, blind). """
     line_style = 'solid'
     line_width = 1.2
     if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
@@ -290,7 +314,8 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
             ax = plot_results_single_metric(ax, varying_param_values, result_by_metric[metric],
                                             metric_disp_name, algorithms, name_varying_param,
                                             add_date_to_title=show_date_plots, show_title=show_title,
-                                            show_legend=show_legend, assign_color_marker_automatic=assign_color_marker_automatic)
+                                            show_legend=show_legend,
+                                            assign_color_marker_automatic=assign_color_marker_automatic)
 
             if 'forced_ranges' in kwargs:
                 if metric in kwargs['forced_ranges']:
@@ -375,7 +400,8 @@ def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, pr
             print(f"\nResults averaged for different parameter {parameter_to_vary_}:")
             for metric, result_array in zip(plot_args_['metrics_list'], plot_args_['result_by_metric'].values()):
                 print(f"{metric = }")
-                varyings_values = convert_varying_param_values_to_display(plot_args_['varying_param_values'], pretty_param_name)
+                varyings_values = convert_varying_param_values_to_display(plot_args_['varying_param_values'],
+                                                                          pretty_param_name)
                 for idx_var in range(result_array.shape[1]):
                     row_data = result_array[:, idx_var, 0]
                     table.add_row([varyings_values[idx_var]] + row_data.tolist())
@@ -650,8 +676,7 @@ def get_parameter_display_name(parameter_to_vary, use_tex=False):
 
 
 def convert_varying_param_values_to_display(x_values_raw, name_varying_param_display):
-
-    display_name = lambda x : get_parameter_display_name(x)
+    display_name = lambda x: get_parameter_display_name(x)
 
     if name_varying_param_display == display_name('chunk_len'):
         return x_values_raw / 16000  # convert to seconds
@@ -898,7 +923,7 @@ def plot_rmse_before_average(signals, dft_props, ref_clean='wet_rank1', which_ax
         line_style = 'solid'
         if both_oracle_and_blind_present:
             line_style = '-.' if (
-                        'cmwf' in algo.lower() or 'prop' in algo.lower() or 'cmvdr' in algo.lower()) else 'dashed'
+                    'cmwf' in algo.lower() or 'prop' in algo.lower() or 'cmvdr' in algo.lower()) else 'dashed'
         if plot_diff_between_algos:
             ax.plot(error, linestyle=line_style)
         else:
@@ -992,3 +1017,17 @@ def plot_f0_spectrogram_outer(s, f0_over_time, dft_props, sig_name=''):
     plt.show()
 
     return fig, ax
+
+
+class AlgoLineStyle:
+    def __init__(self, color='C0', marker='o', line_style='-', line_width=1.):
+        self.color = color
+        self.marker = marker
+        self.line_style = line_style
+        self.line_width = line_width
+
+    def __iter__(self):
+        yield self.color
+        yield self.marker
+        yield self.line_style
+        yield self.line_width
