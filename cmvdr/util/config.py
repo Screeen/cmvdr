@@ -202,21 +202,6 @@ def get_varying_param_values(configuration: dict, parameter_to_vary: str):  # ->
     return varying_param_values
 
 
-# def load_configuration(cfg_name=None, verbose=True):
-#     """ Load configuration file """
-#
-#     if verbose:
-#         print(f"Loading configuration file: {cfg_name}")
-#
-#     config_folder_source = PROJECT_ROOT / "configs"
-#     if not config_folder_source.exists():
-#         raise FileNotFoundError(f"Configuration folder {config_folder_source} does not exist. "
-#                                 "Please check the path or create the folder if necessary.")
-#     cfg_path = config_folder_source / cfg_name
-#     cfg_custom = load_yaml_from_path(cfg_path)
-#     return cfg_custom
-
-
 def load_yaml_from_path(configuration_path):
     """ Read settings from configuration file """
 
@@ -323,27 +308,6 @@ def adjust_config_for_debug(cfg_default):
         print(f"Running in debug mode. {cfg_default['num_montecarlo_simulations'] = } and "
               f"{cfg_default['plot']['destination'] = }")
     return cfg_default
-
-
-# def load_and_merge_secondary_config(cfg_default, data_type_selected='synthetic'):
-#     if cfg_default['secondary_config_file'].lower() != 'none':
-#         cfg_secondary = load_configuration(cfg_default['secondary_config_file'])
-#         cfg_secondary_override = cfg_secondary.get(data_type_selected, {})
-#
-#         # Remove the data_type key from the secondary config, so that it doesn't overwrite the default config
-#         # when merging the two configurations
-#         cfg_secondary.pop(data_type_selected)
-#
-#         cfg_default = merge_configurations(cfg_default, cfg_secondary)
-#         cfg_default = merge_configurations(cfg_default, cfg_secondary_override)
-#
-#         # Remove the unused "data types" (configuration settings) to avoid polluting the final YAML file stored with the experiment
-#         for data_type_other in cfg_default['data_types_all']:
-#             if data_type_other != data_type_selected:
-#                 cfg_default.pop(data_type_other, None)
-#
-#         cfg_default = adjust_config_for_debug(cfg_default)
-#     return cfg_default
 
 
 def assign_default_values(cfg):
