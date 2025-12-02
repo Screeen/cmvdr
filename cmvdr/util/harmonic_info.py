@@ -26,7 +26,7 @@ class HarmonicInfo:
         self.mask_harmonic_bins = np.array([])
 
         self.harmonic_sets = harmonic_sets
-        if not isinstance(self.harmonic_sets, np.ndarray) or not np.issubdtype(self.harmonic_sets.dtype, np.integer):
+        if not isinstance(self.harmonic_sets, np.ndarray) or (self.harmonic_sets.size > 0 and not np.issubdtype(self.harmonic_sets.dtype, np.integer)):
             raise ValueError("harmonic_sets must be a numpy ndarray of integers.")
 
         self.harmonic_sets_before_coh = np.array([])  # local coherence filtering only
