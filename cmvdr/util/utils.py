@@ -54,12 +54,12 @@ def increase_filename_index(file_name: Path):
     return file_name
 
 
-def savefig(figure, file_name: Path, dpi=300, transparent=True, include_pickle=True):
+def savefig(figure, file_name: Path, dpi=300, transparent=True, include_pickle=True, bbox_inches='tight'):
     """ Save a figure to a file. If the file already exists, increase the index in the filename. """
 
     file_name = increase_filename_index(file_name)
     figure.savefig(file_name, dpi=dpi, transparent=transparent,
-                   bbox_inches='tight',
+                   bbox_inches=bbox_inches,
                    facecolor=figure.get_facecolor(), edgecolor=figure.get_edgecolor())
 
     if include_pickle:
