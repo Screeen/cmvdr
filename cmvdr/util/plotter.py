@@ -132,7 +132,7 @@ def assign_color_and_marker_to_algorithm(algo_lower, algo_index=0):
 
 def plot_results_single_metric(ax, varying_param_values, result_single_metric, metric_display_name, algorithms,
                                name_varying_param, add_date_to_title=True, show_title=True, show_legend=True,
-                               assign_color_marker_automatic=True):
+                               assign_color_marker_automatic=True, locator_factory=None, num_columns_legend=1):
     """
     Plot the results of a single metric vs a varying parameter.
 
@@ -143,6 +143,11 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
     :param algorithms: List of algorithms (e.g., ['Noisy', 'MWF [blind]', 'cMWF [blind]', 'MWF [oracle]', ...])
     :param name_varying_param: Name of the varying parameter (e.g., 'f0_err_percent'). This will be displayed on the x-axis.
     :param add_date_to_title: If True, add the current date and time to the title of the plot.
+    :param show_title: If True, show the title of the plot.
+    :param show_legend: If True, show the legend of the plot.
+    :param assign_color_marker_automatic: If True, automatically assign colors and markers to algorithms.
+    :param locator_factory: Function to create custom locators for x and y axes. If None, default locators are used.
+    :param num_columns_legend: Number of columns in the legend.
     :return:
     """
     x_values_raw = np.array(varying_param_values)
@@ -195,25 +200,16 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
     if show_legend:
         handles, labels = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
-        # ax.legend(by_label.values(), by_label.keys(), fontsize=legend_font_size, ncol=1)
-        num_columns = len(algorithms) if len(algorithms) > 2 else 1
         ax.get_figure().legend(by_label.values(), by_label.keys(), fontsize=legend_font_size,
-                               ncol=num_columns, loc='outside lower center')
+                               ncol=num_columns_legend, loc='outside lower center')
 
     ax.set_xlabel(f'{name_varying_param}', fontsize=font_size, labelpad=2)
     ax.set_ylabel(metric_display_name, fontsize=font_size, labelpad=2)
 
-    # x, y ticks and grid
-    if ax.get_xscale() == 'log':
-        x_locator = tck.SymmetricalLogLocator(base=10, linthresh=lin_thresh)
-        y_minor_locator = tck.AutoMinorLocator(4)
+    if locator_factory is None:
+        x_locator, y_minor_locator = _get_default_locators(ax, lin_thresh, num_x_ticks, x_values)
     else:
-        if num_x_ticks < 8:  # only a few x-ticks, so show all of them
-            x_locator = tck.FixedLocator(x_values)
-            y_minor_locator = tck.AutoMinorLocator(2)
-        else:
-            x_locator = tck.MaxNLocator(num_x_ticks - 1, min_n_ticks=4)
-            y_minor_locator = tck.AutoMinorLocator(2)
+        x_locator, y_minor_locator = locator_factory(ax, lin_thresh, num_x_ticks, x_values)
 
     ax.set_xticks(x_values)
     ax.set_xticklabels(x_values, fontsize=font_size_ticks_labels)
@@ -234,6 +230,22 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
         ax.set_title(title, fontsize=title_font_size)
 
     return ax
+
+
+def _get_default_locators(ax, lin_thresh, num_x_ticks: int, x_values) -> tuple[tck.FixedLocator, tck.AutoMinorLocator]:
+    """ Get default locators for x and y axes. """
+
+    if ax.get_xscale() == 'log':
+        x_locator = tck.SymmetricalLogLocator(base=10, linthresh=lin_thresh)
+        y_minor_locator = tck.AutoMinorLocator(4)
+    else:
+        if num_x_ticks < 8:  # only a few x-ticks, so show all of them
+            x_locator = tck.FixedLocator(x_values)
+            y_minor_locator = tck.AutoMinorLocator(2)
+        else:
+            x_locator = tck.MaxNLocator(num_x_ticks - 1, min_n_ticks=4)
+            y_minor_locator = tck.AutoMinorLocator(2)
+    return x_locator, y_minor_locator
 
 
 def choose_algo_styles(algorithms, assign_color_marker_automatic: bool) -> list[Any]:
@@ -279,7 +291,9 @@ def assign_line_style(algo_lower) -> tuple[str, float]:
 def plot_results(varying_param_values, result_by_metric, metrics_list, algorithms, parameter_to_vary='',
                  save_plots=False, separately=False, show_date_plots=True, show_title=True, show_legend=True,
                  use_tex=False, force_no_plots=False, f0_spectrogram=False, target_folder_path=Path('figs'),
-                 assign_color_marker_automatic=True, y_size_ratio=0.8, **kwargs):
+                 assign_color_marker_automatic=True, y_size_ratio=0.8, locator_factory=None,
+                 percentage_subfigure=1.0, num_columns_legend=0,
+                 **kwargs):
     """ Plot the results of multiple metrics vs a varying parameter. """
 
     if not result_by_metric or not metrics_list or not algorithms:
@@ -297,13 +311,19 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
     num_plots = len(metrics_list_display_name) if not separately else 1
     name_varying_param = get_parameter_display_name(parameter_to_vary, use_tex=use_tex)
 
+    if num_columns_legend > 0:
+        num_columns_legend = num_columns_legend
+    else:
+        num_columns_legend = len(algorithms) if len(algorithms) > 2 else 1
+
     if save_plots:
         target_folder_path.mkdir(parents=True, exist_ok=True)
 
     figs = []
     if separately:
         for idx, metric in enumerate(result_by_metric.keys()):
-            x_size = u.get_plot_width_double_column_latex() / 2  # two figs should fit one column (4 figs in one row)
+            # x_size = size of HALF a column of IEEE conference paper (4 pics fit horizontally if we span 2 columns)
+            x_size = percentage_subfigure * u.get_plot_width_double_column_latex() / 2  # two figs should fit one column (4 figs in one row)
             fig = plt.figure(figsize=(x_size, y_size_ratio * x_size), dpi=300, constrained_layout=False)
 
             # Fixed space for XY plot area (independent of labels)
@@ -315,7 +335,9 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
                                             metric_disp_name, algorithms, name_varying_param,
                                             add_date_to_title=show_date_plots, show_title=show_title,
                                             show_legend=show_legend,
-                                            assign_color_marker_automatic=assign_color_marker_automatic)
+                                            assign_color_marker_automatic=assign_color_marker_automatic,
+                                            locator_factory=locator_factory,
+                                            num_columns_legend=num_columns_legend)
 
             if 'forced_ranges' in kwargs:
                 if metric in kwargs['forced_ranges']:
@@ -324,46 +346,80 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
             if save_plots:
                 name_second_part = make_dir_get_saving_path(metric_disp_name, name_varying_param)
                 u.savefig(fig, target_folder_path / (name_second_part + '.pdf'))
+
+            # Create a separate figure for the legend
+            if idx == 0:
+                f_leg, bbox = plot_legend_separate_fig(ax, fig_size=(x_size, y_size_ratio * x_size / 16),
+                                                       ncol=num_columns_legend)
+                if save_plots:
+                    dest_folder_leg = target_folder_path / '_legends'
+                    dest_folder_leg.mkdir(parents=True, exist_ok=True)
+                    u.savefig(f_leg, dest_folder_leg / 'legend.pdf', bbox_inches=bbox)
+
             figs.append(fig)
             fig.show()
 
     else:  # print all metrics in one figure (debugging)
-        plot_area_size = 3.5
-        if num_plots < 3:
-            fig = plt.figure(figsize=(1 + plot_area_size * 0.9, 1 + num_plots * plot_area_size), dpi=150,
-                             constrained_layout=True)
-            axs = fig.subplots(nrows=num_plots, ncols=1, squeeze=True, sharex=True)
-        else:
-            fig = plt.figure(figsize=(1 + 2 * plot_area_size, 1 + num_plots * plot_area_size / 2), dpi=150,
-                             constrained_layout=True)
-            num_rows = int(np.ceil(num_plots / 2))
-            axs = fig.subplots(nrows=num_rows, ncols=2, squeeze=True)
-
-        # Convert to numpy array to avoid errors when there is only one metric
-        axs = np.array(axs, ndmin=1, dtype=object).flatten()
-
-        for idx, metric in enumerate(result_by_metric.keys()):
-            metric_disp_name = metrics_list_display_name[idx]
-            axs[idx] = plot_results_single_metric(axs[idx], varying_param_values, result_by_metric[metric],
-                                                  metric_disp_name, algorithms, name_varying_param,
-                                                  add_date_to_title=show_date_plots, show_title=show_title,
-                                                  show_legend=show_legend)
-
-            if 'forced_ranges' in kwargs:
-                if metric in kwargs['forced_ranges']:
-                    axs[idx].set_ylim(kwargs['forced_ranges'][metric])
-
-        # If there are 3 plots, the last one is empty, so remove it
-        if num_plots == 3:
-            fig.delaxes(axs[-1])
-
-        if save_plots:
-            name_second_part = make_dir_get_saving_path('metrics', name_varying_param)
-            u.savefig(fig, target_folder_path / (name_second_part + '.pdf'))
-        figs.append(fig)
-        fig.show()
+        _debug_plot_all_subfigures(algorithms, figs, kwargs, metrics_list_display_name, name_varying_param, num_plots,
+                                   result_by_metric, save_plots, show_date_plots, show_legend, show_title,
+                                   target_folder_path, varying_param_values)
 
     return figs
+
+
+def _debug_plot_all_subfigures(algorithms, figs: list[Any], kwargs: dict[str, Any],
+                               metrics_list_display_name: list[str],
+                               name_varying_param: str, num_plots: int, result_by_metric, save_plots: bool,
+                               show_date_plots: bool, show_legend: bool, show_title: bool, target_folder_path: Path,
+                               varying_param_values):
+    plot_area_size = 3.5
+    if num_plots < 3:
+        fig = plt.figure(figsize=(1 + plot_area_size * 0.9, 1 + num_plots * plot_area_size), dpi=150,
+                         constrained_layout=True)
+        axs = fig.subplots(nrows=num_plots, ncols=1, squeeze=True, sharex=True)
+    else:
+        fig = plt.figure(figsize=(1 + 2 * plot_area_size, 1 + num_plots * plot_area_size / 2), dpi=150,
+                         constrained_layout=True)
+        num_rows = int(np.ceil(num_plots / 2))
+        axs = fig.subplots(nrows=num_rows, ncols=2, squeeze=True)
+
+    # Convert to numpy array to avoid errors when there is only one metric
+    axs = np.array(axs, ndmin=1, dtype=object).flatten()
+
+    for idx, metric in enumerate(result_by_metric.keys()):
+        metric_disp_name = metrics_list_display_name[idx]
+        axs[idx] = plot_results_single_metric(axs[idx], varying_param_values, result_by_metric[metric],
+                                              metric_disp_name, algorithms, name_varying_param,
+                                              add_date_to_title=show_date_plots, show_title=show_title,
+                                              show_legend=show_legend)
+
+        if 'forced_ranges' in kwargs:
+            if metric in kwargs['forced_ranges']:
+                axs[idx].set_ylim(kwargs['forced_ranges'][metric])
+
+    # If there are 3 plots, the last one is empty, so remove it
+    if num_plots == 3:
+        fig.delaxes(axs[-1])
+
+    if save_plots:
+        name_second_part = make_dir_get_saving_path('metrics', name_varying_param)
+        u.savefig(fig, target_folder_path / (name_second_part + '.pdf'))
+    figs.append(fig)
+    fig.show()
+
+
+def plot_legend_separate_fig(ax, fig_size: tuple, fontsize_legend: int = 8, ncol: int = 1):
+    """
+    Create a separate figure for the legend of a plot.
+    """
+
+    fig = plt.figure(figsize=fig_size)
+    handles, labels = ax.get_legend_handles_labels()
+    leg = fig.legend(handles=handles, labels=labels, frameon=False,
+                     fontsize=fontsize_legend, ncol=ncol, loc='center')
+    fig.canvas.draw()
+    bbox = leg.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    return fig, bbox
 
 
 def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, print_summary=False,
