@@ -132,10 +132,10 @@ def assign_color_and_marker_to_algorithm(algo_lower, algo_index=0):
 
 def plot_results_single_metric(ax, varying_param_values, result_single_metric, metric_display_name, algorithms,
                                name_varying_param, add_date_to_title=True, show_title=True, show_legend=True,
-                               assign_color_marker_automatic=True, locator_factory=None, num_columns_legend=1):
+                               num_columns_legend=1, assign_color_marker_semimanual=True, algo_styles=None,
+                               locator_factory=None):
     """
     Plot the results of a single metric vs a varying parameter.
-
     :param ax: Matplotlib axis
     :param varying_param_values: List of values of the varying parameter (e.g., [0, 1, 2, 3, 4, 5])
     :param result_single_metric: Numpy array of shape (num_evaluated_algorithms, num_varying_param_values, 3)
@@ -145,9 +145,11 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
     :param add_date_to_title: If True, add the current date and time to the title of the plot.
     :param show_title: If True, show the title of the plot.
     :param show_legend: If True, show the legend of the plot.
-    :param assign_color_marker_automatic: If True, automatically assign colors and markers to algorithms.
-    :param locator_factory: Function to create custom locators for x and y axes. If None, default locators are used.
     :param num_columns_legend: Number of columns in the legend.
+    :param assign_color_marker_semimanual: If True, automatically assign colors and markers to algorithms.
+    :param algo_styles: List of AlgoLineStyle objects for each algorithm. If None, default styles are used.
+    :param locator_factory: Function to create custom locators for x and y axes. If None, default locators are used.
+    :rtype: matplotlib.axes.Axes
     :return:
     """
     x_values_raw = np.array(varying_param_values)
@@ -171,9 +173,10 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
         legend_font_size = 7
         title = f'{metric_display_name} vs {decapitalize(name_varying_param)}'
 
-    # Algorithms: ['Noisy', 'MWF [blind] ', 'cMWF [blind] (prop.)', 'MWF [oracle] ', 'cMWF [oracle] (prop.)',
-    # 'MWF [super-oracle] ', 'cMWF [super-oracle] (prop.)']
-    algo_styles = choose_algo_styles(algorithms, assign_color_marker_automatic)
+    # algo_styles means color, marker, line_style, line_width for each algorithm
+    if algo_styles is None:
+        algo_styles = _default_algo_style(algorithms, assign_color_marker_semimanual)
+
     for algo_index, algo in enumerate(algorithms):
         res_single_metric_single_algo = result_single_metric[algo_index]
         color, marker, line_style, line_width = algo_styles[algo_index]
@@ -248,12 +251,14 @@ def _get_default_locators(ax, lin_thresh, num_x_ticks: int, x_values) -> tuple[t
     return x_locator, y_minor_locator
 
 
-def choose_algo_styles(algorithms, assign_color_marker_automatic: bool) -> list[Any]:
+def _default_algo_style(algorithms, assign_color_marker_automatic: bool) -> list[Any]:
     """
     Choose the color, marker, and line style for each algorithm.
     If two algorithms have the same style, change the color and marker of the second one.
     """
 
+    # algo_styles is a list of AlgoLineStyle objects, each containing color, marker, line_style, line_width
+    # for each algorithm
     algo_styles = []
     for algo_index, algo in enumerate(algorithms):
         line_style, line_width = assign_line_style(algo.lower())
@@ -263,7 +268,14 @@ def choose_algo_styles(algorithms, assign_color_marker_automatic: bool) -> list[
             color, marker = colors[algo_index], markers[algo_index]
         algo_styles.append(AlgoLineStyle(color, marker, line_style, line_width))
 
-    for algo_index, algo in enumerate(algorithms):
+    algo_styles = adjust_algo_styles_to_avoid_duplicates(algo_styles)
+
+    return algo_styles
+
+
+def adjust_algo_styles_to_avoid_duplicates(algo_styles):
+    # Ensure that no two styles have the same color or marker by adjusting them if necessary
+    for algo_index in range(1, len(algo_styles)):
         for prev_index in range(algo_index):
             style_idx = algo_index
             while algo_styles[prev_index].color == algo_styles[algo_index].color:
@@ -272,6 +284,7 @@ def choose_algo_styles(algorithms, assign_color_marker_automatic: bool) -> list[
             while algo_styles[prev_index].marker == algo_styles[algo_index].marker:
                 algo_styles[algo_index].marker = markers[style_idx]
                 style_idx += 1
+
     return algo_styles
 
 
@@ -291,8 +304,8 @@ def assign_line_style(algo_lower) -> tuple[str, float]:
 def plot_results(varying_param_values, result_by_metric, metrics_list, algorithms, parameter_to_vary='',
                  save_plots=False, separately=False, show_date_plots=True, show_title=True, show_legend=True,
                  use_tex=False, force_no_plots=False, f0_spectrogram=False, target_folder_path=Path('figs'),
-                 assign_color_marker_automatic=True, y_size_ratio=0.8, locator_factory=None,
-                 percentage_subfigure=1.0, num_columns_legend=0,
+                 assign_color_marker_semimanual=True, y_size_ratio=0.8, locator_factory=None,
+                 percentage_subfigure=1.0, num_columns_legend=0, algo_styles=None,
                  **kwargs):
     """ Plot the results of multiple metrics vs a varying parameter. """
 
@@ -331,13 +344,13 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
             ax = fig.subplots(nrows=1, ncols=1, squeeze=True)
 
             metric_disp_name = metrics_list_display_name[idx]
-            ax = plot_results_single_metric(ax, varying_param_values, result_by_metric[metric],
-                                            metric_disp_name, algorithms, name_varying_param,
-                                            add_date_to_title=show_date_plots, show_title=show_title,
-                                            show_legend=show_legend,
-                                            assign_color_marker_automatic=assign_color_marker_automatic,
+            ax = plot_results_single_metric(ax, varying_param_values, result_by_metric[metric], metric_disp_name,
+                                            algorithms, name_varying_param, add_date_to_title=show_date_plots,
+                                            show_title=show_title, show_legend=show_legend,
+                                            num_columns_legend=num_columns_legend,
+                                            assign_color_marker_semimanual=assign_color_marker_semimanual,
                                             locator_factory=locator_factory,
-                                            num_columns_legend=num_columns_legend)
+                                            algo_styles=algo_styles)
 
             if 'forced_ranges' in kwargs:
                 if metric in kwargs['forced_ranges']:
