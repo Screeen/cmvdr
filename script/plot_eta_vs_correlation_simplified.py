@@ -79,14 +79,21 @@ def compute_theoretical_eta(rho, sigma_i_to_v_ratio=1.0):
     return 1 - rho**2 / (1 + sigma_i_to_v_ratio)
 
 
-def compute_empirical_eta_single_bin(rho, P, noise_power=1.0):
+def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, noise_power=1.0):
     """
     Compute empirical η using cMVDR beamformer on a single frequency bin.
     
     This function:
-    1. Creates synthetic covariance matrices with equicorrelated structure
+    1. Creates synthetic covariance matrices following the paper's model
     2. Runs cMVDR beamformer to get optimal weights
     3. Computes output noise power: η = w^H * Φ_n * w / noise_power
+    
+    Based on the paper, the covariance structure for M=1 with P shifts is:
+    S_x = S_s + S_i + S_v
+    where:
+    - S_s: target signal (targetPow on first element)
+    - S_i: interference (interfPow = σ²ᵢ on second element)
+    - S_v: noise (noisePow = σ²ᵥ with correlation ρ)
     
     Parameters
     ----------
@@ -94,8 +101,10 @@ def compute_empirical_eta_single_bin(rho, P, noise_power=1.0):
         Target spectral correlation (0 to 1)
     P : int
         Number of cyclic shifts (virtual channels)
+    sigma_i_to_v_ratio : float
+        Ratio σ²ᵢ/σ²ᵥ (interference to noise power ratio)
     noise_power : float
-        Input noise power per component
+        Noise power σ²ᵥ (noisePow in the paper)
         
     Returns
     -------
@@ -106,18 +115,27 @@ def compute_empirical_eta_single_bin(rho, P, noise_power=1.0):
     M = 1
     K = 1
     
-    # Generate equicorrelated covariance matrices
-    # Wideband (cyclic) covariance: (K, M*P, M*P)
+    # Calculate interference power from ratio
+    interf_power = sigma_i_to_v_ratio * noise_power
+    
+    # Target power (arbitrary, doesn't affect η)
+    target_power = 10.0
+    
+    # Generate noise covariance with correlation ρ
+    # S_v = noisePow * [[1, ρ], [ρ, 1]] (for P=2 case, extends to P dimensions)
     cov_noise_wb = np.zeros((K, M * P, M * P), dtype=np.complex128)
     cov_noise_wb[0] = generate_equicorrelated_covariance(rho, M * P, noise_power)
     
-    # For the input signal covariance, assume it's white (uncorrelated) target
-    # plus the equicorrelated noise
-    target_power = 10.0  # Arbitrary target power (doesn't affect η)
-    cov_noisy_wb = cov_noise_wb.copy()
-    # Add white target signal contribution (only to diagonal)
-    for i in range(M * P):
-        cov_noisy_wb[0, i, i] += target_power
+    # Build the noisy covariance following the paper's model:
+    # S_x = S_s + S_i + S_v
+    cov_noisy_wb = cov_noise_wb.copy()  # Start with S_v
+    
+    # Add target signal on first element: S_s
+    cov_noisy_wb[0, 0, 0] += target_power
+    
+    # Add interference on second element: S_i
+    if M * P > 1:
+        cov_noisy_wb[0, 1, 1] += interf_power
     
     # Narrowband covariances (fallback for non-cyclic bins)
     cov_noise_nb = np.zeros((K, M, M), dtype=np.complex128)
@@ -154,10 +172,15 @@ def compute_empirical_eta_single_bin(rho, P, noise_power=1.0):
         w_c = weights[:, 0]  # Shape: (M*P,)
         
         # Compute output noise power: w^H * Φ_n * w
-        output_noise_power = np.real(np.conj(w_c) @ cov_noise_wb[0] @ w_c)
+        # Total noise includes both interference and noise: S_n = S_i + S_v
+        cov_total_noise_wb = cov_noise_wb.copy()
+        if M * P > 1:
+            cov_total_noise_wb[0, 1, 1] += interf_power
         
-        # Input noise power (average over M*P channels)
-        input_noise_power = noise_power
+        output_noise_power = np.real(np.conj(w_c) @ cov_total_noise_wb[0] @ w_c)
+        
+        # Input noise power (per component) 
+        input_noise_power = noise_power + interf_power
         
         # Residual noise factor: η = output_noise / input_noise
         eta = output_noise_power / input_noise_power
@@ -165,7 +188,7 @@ def compute_empirical_eta_single_bin(rho, P, noise_power=1.0):
         return eta
         
     except Exception as e:
-        print(f"Warning: Beamformer computation failed for rho={rho}: {e}")
+        print(f"Warning: Beamformer computation failed for rho={rho}, ratio={sigma_i_to_v_ratio}: {e}")
         return 1.0  # Return no noise reduction if failed
 
 
@@ -182,7 +205,7 @@ class SimpleHarmonicInfo:
         return self._P_all
 
 
-def run_simulation_sweep(rho_values, P=8, noise_power=1.0):
+def run_simulation_sweep(rho_values, sigma_i_to_v_ratio=1.0, P=8, noise_power=1.0):
     """
     Run simulation sweep over correlation values.
     
@@ -190,6 +213,8 @@ def run_simulation_sweep(rho_values, P=8, noise_power=1.0):
     ----------
     rho_values : array_like
         Array of spectral correlation values to test
+    sigma_i_to_v_ratio : float
+        Ratio σ²ᵢ/σ²ᵥ (interference to noise power ratio)
     P : int
         Number of cyclic shifts (virtual channels)
     noise_power : float
@@ -203,13 +228,13 @@ def run_simulation_sweep(rho_values, P=8, noise_power=1.0):
     eta_empirical = []
     
     for rho in rho_values:
-        eta = compute_empirical_eta_single_bin(rho, P, noise_power)
+        eta = compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio, noise_power)
         eta_empirical.append(eta)
     
     return np.array(eta_empirical)
 
 
-def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_sim, output_path, use_db=False):
+def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_sim_dict, output_path, use_db=False):
     """
     Create comparison plot with multiple theoretical curves for different σ²ᵢ/σ²ᵥ ratios.
     
@@ -223,8 +248,8 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
         List of σ²ᵢ/σ²ᵥ ratios to plot
     rho_sim : ndarray
         Simulation correlation values (sparse, for markers)
-    eta_sim : ndarray
-        Empirical η values from simulation (for σ²ᵢ/σ²ᵥ = 1.0)
+    eta_sim_dict : dict
+        Dict mapping σ²ᵢ/σ²ᵥ ratios to empirical η arrays from simulation
     output_path : Path
         Output file path
     use_db : bool
@@ -245,9 +270,10 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
     fig, ax = plt.subplots(figsize=(width, height))
     
     # Color scheme for different ratios
-    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple']
+    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
+    markers = ['o', 's', '^', 'D']
     
-    # Plot theory curves for different σ²ᵢ/σ²ᵥ ratios
+    # Plot theory curves and simulation markers for each σ²ᵢ/σ²ᵥ ratio
     for idx, ratio in enumerate(sigma_ratios):
         eta_theory = eta_theory_dict[ratio]
         
@@ -257,28 +283,37 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
             eta_theory_plot = eta_theory
         
         color = colors[idx % len(colors)]
+        marker = markers[idx % len(markers)]
         
         if use_latex:
-            label = r'$\sigma_i^2/\sigma_v^2 = ' + f'{ratio:.1f}' + r'$'
+            label_theory = r'Theory: $\sigma_i^2/\sigma_v^2 = ' + f'{ratio:.2g}' + r'$'
+            label_sim = r'Sim: $\sigma_i^2/\sigma_v^2 = ' + f'{ratio:.2g}' + r'$'
         else:
-            label = f'σ²ᵢ/σ²ᵥ = {ratio:.1f}'
+            label_theory = f'Theory: σ²ᵢ/σ²ᵥ = {ratio:.2g}'
+            label_sim = f'Sim: σ²ᵢ/σ²ᵥ = {ratio:.2g}'
         
+        # Plot theory line
         ax.plot(rho_theory, eta_theory_plot, 
                 color=color, linestyle='-', linewidth=1.5,
-                label=label)
+                label=label_theory)
+        
+        # Plot simulation markers with same color
+        if ratio in eta_sim_dict:
+            eta_sim = eta_sim_dict[ratio]
+            if use_db:
+                eta_sim_plot = 10 * np.log10(eta_sim + 1e-10)
+            else:
+                eta_sim_plot = eta_sim
+            
+            ax.plot(rho_sim, eta_sim_plot,
+                    color=color, marker=marker, linestyle='',
+                    markersize=4, markerfacecolor='none', markeredgewidth=1.0,
+                    label=label_sim)
     
-    # Plot simulation (markers) for σ²ᵢ/σ²ᵥ = 1.0
     if use_db:
-        eta_sim_plot = 10 * np.log10(eta_sim + 1e-10)
         ylabel = r'$\eta$ (dB)' if use_latex else 'η (dB)'
     else:
-        eta_sim_plot = eta_sim
         ylabel = r'$\eta$' if use_latex else 'η'
-    
-    ax.plot(rho_sim, eta_sim_plot,
-            color='black', marker='o', linestyle='',
-            markersize=4, markerfacecolor='none', markeredgewidth=1.0,
-            label='Simulation (cMVDR)')
     
     ax.set_xlabel(r'Spectral correlation $|\rho|$' if use_latex else 'Spectral correlation |ρ|')
     ax.set_ylabel(ylabel)
@@ -289,7 +324,7 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
         ax.set_title('Noise Reduction Factor η vs. Correlation')
     
     ax.grid(True, alpha=0.3)
-    ax.legend(loc='best', fontsize=8)
+    ax.legend(loc='best', fontsize=7, ncol=2)
     ax.set_xlim([0, 1])
     
     plt.tight_layout()
@@ -406,7 +441,7 @@ def main():
     noise_power = 1.0
     
     # Test multiple σ²ᵢ/σ²ᵥ ratios (power ratios between harmonic components)
-    sigma_ratios = [0.1, 0.5, 1.0, 2.0, 5.0]
+    sigma_ratios = [0.01, 0.1, 1, 10]
     
     # Dense sampling for theory (smooth curves)
     rho_theory = np.linspace(0, 1, 100)
@@ -419,14 +454,17 @@ def main():
     eta_theory_dict = {}
     for ratio in sigma_ratios:
         eta_theory_dict[ratio] = compute_theoretical_eta(rho_theory, sigma_i_to_v_ratio=ratio)
-        print(f"   σ²ᵢ/σ²ᵥ = {ratio:4.1f}: η range [{eta_theory_dict[ratio].min():.4f}, {eta_theory_dict[ratio].max():.4f}]")
+        print(f"   σ²ᵢ/σ²ᵥ = {ratio:5.2f}: η range [{eta_theory_dict[ratio].min():.4f}, {eta_theory_dict[ratio].max():.4f}]")
     
-    # Run simulations for one representative case (σ²ᵢ/σ²ᵥ = 1.0)
-    print("\n2. Running cMVDR simulations for σ²ᵢ/σ²ᵥ = 1.0...")
+    # Run simulations for EACH ratio configuration
+    print("\n2. Running cMVDR simulations for each σ²ᵢ/σ²ᵥ ratio...")
     print(f"   Using P={P} cyclic shifts")
     
-    eta_sim = run_simulation_sweep(rho_sim, P=P, noise_power=noise_power)
-    print(f"   Simulation: η range [{eta_sim.min():.4f}, {eta_sim.max():.4f}]")
+    eta_sim_dict = {}
+    for ratio in sigma_ratios:
+        print(f"   Processing σ²ᵢ/σ²ᵥ = {ratio:5.2f}...")
+        eta_sim_dict[ratio] = run_simulation_sweep(rho_sim, sigma_i_to_v_ratio=ratio, P=P, noise_power=noise_power)
+        print(f"      Simulation: η range [{eta_sim_dict[ratio].min():.4f}, {eta_sim_dict[ratio].max():.4f}]")
     
     # Create output directory
     output_dir = Path(__file__).parent.parent / 'figs' / '2026-02-10'
@@ -435,20 +473,20 @@ def main():
     # Generate plots
     print("\n3. Generating plots...")
     
-    # Linear scale plot with multiple theory curves
+    # Linear scale plot with multiple theory curves and simulations
     output_path_linear = output_dir / 'eta_vs_correlation_multi_linear.png'
     fig_linear = create_plot_multi(
         rho_theory, eta_theory_dict, sigma_ratios,
-        rho_sim, eta_sim,
+        rho_sim, eta_sim_dict,
         output_path_linear,
         use_db=False
     )
     
-    # dB scale plot with multiple theory curves
+    # dB scale plot with multiple theory curves and simulations
     output_path_db = output_dir / 'eta_vs_correlation_multi_db.png'
     fig_db = create_plot_multi(
         rho_theory, eta_theory_dict, sigma_ratios,
-        rho_sim, eta_sim,
+        rho_sim, eta_sim_dict,
         output_path_db,
         use_db=True
     )
