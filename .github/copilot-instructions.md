@@ -18,7 +18,7 @@ This is the cMVDR (Cyclic Minimum-Variance Distortionless-Response) beamformer p
 ### Dependencies
 - Core dependencies are managed in `pyproject.toml`
 - Key libraries: librosa, numpy, scipy, matplotlib, sounddevice, pystoi, pesq, pysepm-evo
-- Lock file: `uv.lock` (for reproducible builds)
+- Use pip for package management and installation
 
 ### Installation
 ```bash
