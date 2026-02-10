@@ -1,10 +1,10 @@
 """
-Plot theoretical vs simulated noise reduction performance (ResNoise factor).
+Plot theoretical vs simulated noise reduction performance (η factor).
 
 This script validates the theoretical noise reduction performance from equation 
-eq:res_noise_cmvdr:factor against simulation results.
+eq:eta_cmvdr:factor against simulation results.
 
-Theoretical formula: ResNoise = 1 - ρ² / (1 + σ²ᵢ/σ²ᵥ)
+Theoretical formula: η = 1 - ρ² / (1 + σ²ᵢ/σ²ᵥ)
 where:
 - ρ is the spectral correlation coefficient
 - σ²ᵢ is the interference power
@@ -12,7 +12,7 @@ where:
 
 NOTE: For single-microphone (M=1) case, the cMVDR beamformer weights are always 1
 (pass-through), so no actual spatial noise reduction occurs. This script validates:
-1. The theoretical ResNoise formula across different parameter ranges
+1. The theoretical η formula across different parameter ranges
 2. That the DataGenerator correctly produces signals with specified correlation ρ
 3. The relationship between correlation and potential noise reduction
 
@@ -36,7 +36,7 @@ from cmvdr.util import globs as gs
 from cmvdr.data_gen.manager import Manager
 
 
-def theoretical_res_noise(rho, sigma_i_to_v_ratio):
+def theoretical_eta(rho, sigma_i_to_v_ratio):
     """
     Calculate theoretical residual noise factor.
     
@@ -50,7 +50,7 @@ def theoretical_res_noise(rho, sigma_i_to_v_ratio):
     Returns
     -------
     float or ndarray
-        ResNoise factor η
+        η factor
     """
     return 1 - rho**2 / (1 + sigma_i_to_v_ratio)
 
@@ -143,7 +143,7 @@ def generate_synthetic_signal(rho, snr_db_dir, snr_db_self, fs=16000, duration_s
     }
 
 
-def compute_empirical_res_noise(signals, f0_hz, fs=16000, nfft=512, hop=256, num_harmonics=50):
+def compute_empirical_eta(signals, f0_hz, fs=16000, nfft=512, hop=256, num_harmonics=50):
     """
     Compute empirical residual noise by running cMVDR beamformer.
     
@@ -168,7 +168,7 @@ def compute_empirical_res_noise(signals, f0_hz, fs=16000, nfft=512, hop=256, num
     Returns
     -------
     float
-        Empirical ResNoise factor
+        Empirical η factor
     """
     M = signals['noisy'].shape[0]
     
@@ -255,17 +255,17 @@ def compute_empirical_res_noise(signals, f0_hz, fs=16000, nfft=512, hop=256, num
                 w_k = w[:, k]
                 output_noise_power += np.real(np.conj(w_k) @ cov_noise_nb[k] @ w_k)
         
-        # ResNoise = output_noise / input_noise
+        # η = output_noise / input_noise
         if input_noise_power > 0:
-            res_noise = output_noise_power / input_noise_power
+            eta = output_noise_power / input_noise_power
         else:
-            res_noise = 1.0
+            eta = 1.0
             
     except Exception as e:
         print(f"Warning: Beamformer computation failed: {e}")
-        res_noise = 1.0
+        eta = 1.0
     
-    return res_noise
+    return eta
 
 
 def measure_spectral_correlation_between_harmonics(signal, fs=16000, nfft=512, hop=256, f0_hz=100.0):
@@ -340,10 +340,10 @@ def run_simulation_sweep(rho_values, snr_db_dir, snr_db_self, **kwargs):
     This validates the data generation by:
     1. Generating interference signals with specified correlation ρ via noise_harmonic_corr
     2. Measuring actual inter-harmonic spectral correlation from generated signals
-    3. Computing ResNoise using the theoretical formula with measured parameters
+    3. Computing η using the theoretical formula with measured parameters
     
     This demonstrates that DataGenerator correctly produces harmonically-correlated
-    signals and validates that the theoretical ResNoise formula can be applied.
+    signals and validates that the theoretical η formula can be applied.
     
     Note: For M=1, actual beamforming provides no spatial noise reduction (weights=1).
     The simulation validates the theoretical relationship and data generation.
@@ -362,9 +362,9 @@ def run_simulation_sweep(rho_values, snr_db_dir, snr_db_self, **kwargs):
     Returns
     -------
     ndarray
-        Array of empirical ResNoise values computed from measured parameters
+        Array of empirical η values computed from measured parameters
     """
-    res_noise_empirical = []
+    eta_empirical = []
     
     for rho_target in rho_values:
         signals = generate_synthetic_signal(
@@ -387,16 +387,16 @@ def run_simulation_sweep(rho_values, snr_db_dir, snr_db_self, **kwargs):
         noise_self_power = np.mean(signals['noise_self']**2)
         sigma_i_to_v = noise_dir_power / (noise_self_power + 1e-10)
         
-        # Compute ResNoise using measured correlation
+        # Compute η using measured correlation
         # This validates that the theoretical formula applies to our generated data
-        res_noise = 1 - rho_measured**2 / (1 + sigma_i_to_v)
+        eta = 1 - rho_measured**2 / (1 + sigma_i_to_v)
         
-        res_noise_empirical.append(res_noise)
+        eta_empirical.append(eta)
     
-    return np.array(res_noise_empirical)
+    return np.array(eta_empirical)
 
 
-def create_plot(rho_theory, res_noise_theory_dict, rho_sim, res_noise_sim_dict, 
+def create_plot(rho_theory, eta_theory_dict, rho_sim, eta_sim_dict, 
                 output_path, use_db=False):
     """
     Create comparison plot of theoretical vs simulated noise reduction.
@@ -405,12 +405,12 @@ def create_plot(rho_theory, res_noise_theory_dict, rho_sim, res_noise_sim_dict,
     ----------
     rho_theory : ndarray
         Theoretical correlation values (dense, for smooth curves)
-    res_noise_theory_dict : dict
-        Dict mapping σ²ᵢ/σ²ᵥ ratios to theoretical ResNoise arrays
+    eta_theory_dict : dict
+        Dict mapping σ²ᵢ/σ²ᵥ ratios to theoretical η arrays
     rho_sim : ndarray
         Simulation correlation values (sparse, for markers)
-    res_noise_sim_dict : dict
-        Dict mapping σ²ᵢ/σ²ᵥ ratios to empirical ResNoise arrays
+    eta_sim_dict : dict
+        Dict mapping σ²ᵢ/σ²ᵥ ratios to empirical η arrays
     output_path : Path
         Output file path
     use_db : bool
@@ -434,7 +434,7 @@ def create_plot(rho_theory, res_noise_theory_dict, rho_sim, res_noise_sim_dict,
         marker = markers[idx % len(markers)]
         
         # Plot theory (solid line)
-        res_theory = res_noise_theory_dict[ratio]
+        res_theory = eta_theory_dict[ratio]
         if use_db:
             res_theory_plot = 10 * np.log10(res_theory + 1e-10)
         else:
@@ -445,8 +445,8 @@ def create_plot(rho_theory, res_noise_theory_dict, rho_sim, res_noise_sim_dict,
                 label=f'{label} (theory)')
         
         # Plot simulation (markers)
-        if ratio in res_noise_sim_dict:
-            res_sim = res_noise_sim_dict[ratio]
+        if ratio in eta_sim_dict:
+            res_sim = eta_sim_dict[ratio]
             if use_db:
                 res_sim_plot = 10 * np.log10(res_sim + 1e-10)
             else:
@@ -459,9 +459,9 @@ def create_plot(rho_theory, res_noise_theory_dict, rho_sim, res_noise_sim_dict,
     
     ax.set_xlabel(r'Spectral correlation $|\rho|$', fontsize=12)
     if use_db:
-        ax.set_ylabel(r'ResNoise $\eta$ (dB)', fontsize=12)
+        ax.set_ylabel(r'$\eta$ (dB)', fontsize=12)
     else:
-        ax.set_ylabel(r'ResNoise $\eta$', fontsize=12)
+        ax.set_ylabel(r'$\eta$', fontsize=12)
     ax.set_title('Theoretical vs Simulated Noise Reduction', fontsize=14)
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=9, loc='best')
@@ -504,15 +504,15 @@ def main():
     rho_sim = np.linspace(0, 1, 12)
     
     # Compute theoretical curves
-    print("\n1. Computing theoretical ResNoise curves...")
-    res_noise_theory_dict = {}
+    print("\n1. Computing theoretical η curves...")
+    eta_theory_dict = {}
     for ratio in sigma_i_to_v_ratios:
-        res_noise_theory_dict[ratio] = theoretical_res_noise(rho_theory, ratio)
-        print(f"   σ²ᵢ/σ²ᵥ = {ratio:6.2f}: ResNoise range [{res_noise_theory_dict[ratio].min():.4f}, {res_noise_theory_dict[ratio].max():.4f}]")
+        eta_theory_dict[ratio] = theoretical_eta(rho_theory, ratio)
+        print(f"   σ²ᵢ/σ²ᵥ = {ratio:6.2f}: η range [{eta_theory_dict[ratio].min():.4f}, {eta_theory_dict[ratio].max():.4f}]")
     
     # Run simulations
     print("\n2. Running simulations...")
-    res_noise_sim_dict = {}
+    eta_sim_dict = {}
     
     for ratio in sigma_i_to_v_ratios:
         print(f"\n   Processing σ²ᵢ/σ²ᵥ = {ratio}...")
@@ -528,7 +528,7 @@ def main():
         
         print(f"      SNR_dir = {snr_db_dir:.2f} dB, SNR_self = {snr_db_self:.2f} dB")
         
-        res_noise_sim = run_simulation_sweep(
+        eta_sim = run_simulation_sweep(
             rho_values=rho_sim,
             snr_db_dir=snr_db_dir,
             snr_db_self=snr_db_self,
@@ -539,8 +539,8 @@ def main():
             M=1
         )
         
-        res_noise_sim_dict[ratio] = res_noise_sim
-        print(f"      Empirical ResNoise range: [{res_noise_sim.min():.4f}, {res_noise_sim.max():.4f}]")
+        eta_sim_dict[ratio] = eta_sim
+        print(f"      Empirical η range: [{eta_sim.min():.4f}, {eta_sim.max():.4f}]")
     
     # Create output directory
     output_dir = Path(__file__).parent.parent / 'figs' / '2026-02-10'
@@ -552,8 +552,8 @@ def main():
     # Linear scale plot
     output_path_linear = output_dir / 'noise_reduction_vs_correlation_linear.png'
     fig_linear = create_plot(
-        rho_theory, res_noise_theory_dict,
-        rho_sim, res_noise_sim_dict,
+        rho_theory, eta_theory_dict,
+        rho_sim, eta_sim_dict,
         output_path_linear,
         use_db=False
     )
@@ -561,8 +561,8 @@ def main():
     # dB scale plot
     output_path_db = output_dir / 'noise_reduction_vs_correlation_db.png'
     fig_db = create_plot(
-        rho_theory, res_noise_theory_dict,
-        rho_sim, res_noise_sim_dict,
+        rho_theory, eta_theory_dict,
+        rho_sim, eta_sim_dict,
         output_path_db,
         use_db=True
     )
