@@ -1,7 +1,7 @@
 [project]
 name = "cmvdr"
 version = "0.2.0"
-description = "Cyclic minimum variance distortionless response beamformer"
+description = "Cyclic minimum variance distortionless response beamformer for cancelling almost-cyclostationary interferers"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
@@ -16,9 +16,11 @@ keywords = [
     "beamforming",
     "cmvdr",
     "mvdr",
+    "cmpdr",
     "cyclic",
     "distortionless",
     "minimum variance",
+    "minimum power",
     "signal processing",
     "audio processing",
     "speech enhancement",
@@ -28,6 +30,11 @@ keywords = [
     "array signal processing",
     "direction of arrival",
     "doa",
+    "cyclostationary",
+    "almost-cyclostationary",
+    "acs",
+    "single-channel",
+    "noise cancellation",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
