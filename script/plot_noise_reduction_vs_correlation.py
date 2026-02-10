@@ -6,9 +6,11 @@ eq:eta_cmvdr:factor against simulation results.
 
 Theoretical formula: η = 1 - ρ² / (1 + σ²ᵢ/σ²ᵥ)
 where:
-- ρ is the spectral correlation coefficient
-- σ²ᵢ is the interference power
-- σ²ᵥ is the self-noise (microphone) power
+- ρ is the spectral correlation coefficient between harmonic components
+- σ²ᵢ is the power of one harmonic component
+- σ²ᵥ is the power of another harmonic component (σ²ᵥ > 0 always)
+
+The ratio σ²ᵢ/σ²ᵥ represents the relative power between different harmonic components.
 
 NOTE: For single-microphone (M=1) case, the cMVDR beamformer weights are always 1
 (pass-through), so no actual spatial noise reduction occurs. This script validates:
