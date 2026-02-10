@@ -4,10 +4,14 @@
 seed_is_random: 0
 seed_if_not_random: 12345
 
+num_montecarlo_simulations:       50
+max_num_varying_parameters:       199  # maximum number of experiments (e.g., SNR, P_Max, ....) to run. Set to 1 for debugging.
+max_num_variations_per_parameter: 199  # maximum number of variations (e.g. SNR = [0, 10, 20, 30]) to run. Set to 1 for debugging.
+
 print_results: 1
 plot:
   destination:                  'debug'  # alternatives are debug, slides, paper
-  destination_final_results:    'slides'  # debug, slides, paper
+  destination_final_results:    'paper'  # debug, slides, paper
   intermediate_results:         0
   spectrograms:                 0
   all_variations:               0
@@ -20,10 +24,6 @@ plot:
 fs: 16000
 
 ################################################## OLD DEFAULTS ##################################################
-
-num_montecarlo_simulations:       50
-max_num_varying_parameters:       199  # maximum number of experiments (e.g., SNR, P_Max, ....) to run. Set to 1 for debugging.
-max_num_variations_per_parameter: 199  # maximum number of variations (e.g. SNR = [0, 10, 20, 30]) to run. Set to 1 for debugging.
 
 varying_params_values:
   M: [1, 2, 3, 4, 6]
@@ -48,6 +48,7 @@ beamforming:
   minimize_noisy_cov_mvdr: True
   loadings:  # these values can make a lot of difference! Change with extreme care.
     mvdr: [ 0, 0, 1000 ]  # min_load (not active 1.e-12), max_load (not active 1.e-1), max condition number (active)
+    mwf: [ 0, 0, 1000 ]
 
 cyclostationary_target: false
 
