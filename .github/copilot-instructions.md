@@ -170,9 +170,20 @@ python main.py --data_type synthetic  # or instruments
 ## Important Notes
 
 ### Known Issues
-- Some systems may require PortAudio library for audio playback
-- NumPy version compatibility: Install PESQ from GitHub if needed
-- SciPy kaiser import: May need adjustment in pysepm for newer scipy versions
+- Some systems may require PortAudio library for audio playback (used by sounddevice)
+- NumPy version compatibility: If you encounter `ImportError: numpy.core.multiarray failed to import`, install PESQ directly from GitHub:
+  ```bash
+  pip install https://github.com/ludlows/python-pesq/archive/master.zip
+  ```
+  This is already included in `pyproject.toml` dependencies but may need reinstallation if issues occur.
+- SciPy kaiser import: For scipy >= 1.4.0, if you see `ImportError: cannot import name 'kaiser' from 'scipy.signal'`, edit the pysepm util.py file to change:
+  ```python
+  # Old import
+  from scipy.signal import firls,kaiser,upfirdn
+  # New import
+  from scipy.signal import firls,upfirdn
+  from scipy.signal.windows import kaiser
+  ```
 
 ### Performance Considerations
 - Beamforming is computationally intensive
