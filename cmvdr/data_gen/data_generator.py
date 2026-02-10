@@ -322,7 +322,10 @@ class DataGenerator:
 
             # if target_path is not a valid wav file, look into subdirectories recursively
             if not target_path.exists():
-                target_path = list(datasets_path.glob('**/' + target_file_name))[0]
+                target_path = list(datasets_path.glob('**/' + target_file_name))
+                if len(target_path) == 0:
+                    raise ValueError(f"Target file not found: {target_file_name} in {datasets_path} or its subdirectories.")
+                target_path = target_path[0]  # take the first match
             elif target_path.is_dir():
                 possible_paths = list(target_path.glob('**/*.wav'))
                 if len(possible_paths) == 0:

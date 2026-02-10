@@ -57,9 +57,13 @@ class Evaluator:
 
             if any(['mos' in x for x in self.metrics]):
                 dnsmos_res = mm.compute_dnsmos(signal, self.fs)
-                r['ovrl_mos'][sig_name] = dnsmos_res['ovrl_mos']
-                r['sig_mos'][sig_name] = dnsmos_res['sig_mos']
-                r['bak_mos'][sig_name] = dnsmos_res['bak_mos']
+                if dnsmos_res is not None:
+                    if 'ovrl_mos' in self.metrics:
+                        r['ovrl_mos'][sig_name] = dnsmos_res['ovrl_mos']
+                    if 'sig_mos' in self.metrics:
+                        r['sig_mos'][sig_name] = dnsmos_res['sig_mos']
+                    if 'bak_mos' in self.metrics:
+                        r['bak_mos'][sig_name] = dnsmos_res['bak_mos']
 
             if 'rmse' in self.metrics:
                 rms_error = 0
@@ -127,7 +131,7 @@ class Evaluator:
             for algo_name in algo_names:
                 val = results_dict[metric_name][algo_name]
                 if metric_name_no_postfix.lower() in metrics_need_db:
-                    val = to_db(val)
+                    val = mm.to_db(val)
                 col_data.append(f"{val:.3f}*" if np.abs(val - best_val) < 0.01 else f"{val:.3f} ")
             metric_name_print = f"{metric_name} [dB]" if metric_name.lower() in metrics_need_db else metric_name
             table.add_column(f"{metric_name_print}", col_data)
@@ -300,10 +304,10 @@ def convert_results_to_db(results_all_metrics, metrics_list):
             if np.any(dest[..., 1] <= 0):
                 dest[..., 1][dest[..., 1] <= 0] = dest[..., 0][dest[..., 1] <= 0]
             try:
-                results_db[metric] = to_db(results_all_metrics[metric])
+                results_db[metric] = mm.to_db(results_all_metrics[metric])
             except ValueError as e:
                 warnings.warn(f"Error converting {metric} to dB: {e}: {results_all_metrics[metric]} for {metric = }")
-                results_db[metric] = to_db(np.abs(results_all_metrics[metric]))
+                results_db[metric] = mm.to_db(np.abs(results_all_metrics[metric]))
 
     return results_db
 
