@@ -559,9 +559,9 @@ def main():
     print("=" * 60)
 
     # Configuration parameters
-    P = 8  # Number of cyclic shifts (virtual channels)
+    P = 2  # Number of cyclic shifts (virtual channels)
     noise_power = 1.0
-    num_samples = 1000  # Number of samples for covariance estimation
+    num_samples = 5000  # Number of samples for covariance estimation
 
     # Test multiple σ²ᵢ/σ²ᵥ ratios (power ratios between harmonic components)
     sigma_ratios = [0.01, 0.1, 1, 10]
