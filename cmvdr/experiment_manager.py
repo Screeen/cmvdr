@@ -9,7 +9,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 from cmvdr.data_gen.data_generator import DataGenerator
-from cmvdr.data_gen.f0_manager import F0ChangeAmount
+from cmvdr.data_gen.f0_manager import F0ChangeAmount, F0Manager
 from cmvdr.data_gen import data_generator, f0_manager, manager, audio_disk_loader as audio_loader
 from cmvdr.estimation import covariance_estimator
 from cmvdr.eval import evaluator
@@ -324,7 +324,7 @@ class ExperimentManager:
 
                     # Inject artificial frequency estimation errors for sensitivity analysis
                     if cfg.get('mod_error_perc', 0) > 0 and harmonic_freqs_est.size > 0:
-                        harmonic_freqs_est = f0_manager.F0Manager.shift_frequencies_by_percentage(
+                        harmonic_freqs_est = F0Manager.shift_frequencies_by_percentage(
                             harmonic_freqs_est, cfg['mod_error_perc'] / 100, 
                             all_same_sign=False, fixed_amount=False)
 

@@ -69,9 +69,9 @@ class F0ManagerFrequencyShiftTests(unittest.TestCase):
         self.assertNotEqual(result[0], freqs[0])
 
     def test_shift_frequencies_large_percentage(self):
-        """Test with large percentage (1% = 0.01)."""
+        """Test with 1% frequency shift (percentage = 0.01)."""
         freqs = np.array([100.0, 200.0])
-        percentage = 0.01  # 1%
+        percentage = 0.01  # 1% (decimal representation)
         result = F0Manager.shift_frequencies_by_percentage(freqs, percentage, all_same_sign=False, fixed_amount=False)
         # All frequencies should still be positive
         self.assertTrue(np.all(result > 0))
