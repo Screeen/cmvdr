@@ -28,7 +28,7 @@ from cmvdr.util import plotter
 from cmvdr.util import globs as gs
 
 # Initialize random number generator
-gs.rng, _ = gs.compute_rng(seed_is_random=False, rnd_seed_=42, verbose=True)
+gs.rng, _ = gs.compute_rng(seed_is_random=False, rnd_seed_=44, verbose=True)
 
 
 def generate_correlated_signal(r_true, sig_shape, cpx_data=True):
@@ -392,7 +392,7 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
 
     # Use proper figure size for double-column LaTeX documents
     width = u.get_plot_width_double_column_latex()
-    height = width * 0.75  # Aspect ratio
+    height = width * 0.55  # Aspect ratio
 
     fig, ax = plt.subplots(figsize=(width, height), constrained_layout=True)
 
@@ -413,10 +413,11 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
         marker = markers[idx % len(markers)]
 
         # Simplified label: only show the ratio value
+        ratio_db = 10 * np.log10(ratio + 1e-10)
         if use_latex:
-            label_ratio = r'$\sigma_i^2/\sigma_v^2 = ' + f'{ratio:.2g}' + r'$'
+            label_ratio = r'$\sigma_i^2/\sigma_v^2 = ' + f'{ratio_db:.0f}'+r' \text{dB}' + r'$'
         else:
-            label_ratio = f'σ²ᵢ/σ²ᵥ = {ratio:.2g}'
+            label_ratio = f'σ²ᵢ/σ²ᵥ = {ratio_db:.0f}dB'
 
         # Plot theory line (only this one gets the label)
         ax.plot(rho_theory, eta_theory_plot,
@@ -436,20 +437,20 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
                     markersize=4, markerfacecolor='none', markeredgewidth=1.0)
 
     if use_db:
-        ylabel = r'$\eta$ [dB]' if use_latex else 'η [dB]'
+        ylabel = r'Residual noise factor $\eta$ [dB]' if use_latex else 'η [dB]'
     else:
-        ylabel = r'$\eta$' if use_latex else 'η'
+        ylabel = r'Residual noise factor $\eta$' if use_latex else 'η'
 
     ax.set_xlabel(r'Spectral correlation $|\rho|$' if use_latex else 'Spectral correlation |ρ|')
     ax.set_ylabel(ylabel)
 
-    if use_latex:
-        ax.set_title(r'Residual noise factor $\eta$ vs.\ correlation')
-    else:
-        ax.set_title('Residual noise factor η vs. Correlation')
+    # if use_latex:
+    #     ax.set_title(r'Residual noise factor $\eta$ vs.\ correlation')
+    # else:
+    #     ax.set_title('Residual noise factor η vs. Correlation')
 
     ax.grid(True, alpha=0.3)
-    ax.legend(loc='best', fontsize=8)
+    ax.legend(loc='best', fontsize=8, frameon=True)
     ax.set_xlim([0.5, 1])
 
     # Save figure
@@ -477,16 +478,16 @@ def main():
     # Configuration parameters
     P = 2  # Number of cyclic shifts (virtual channels)
     noise_power = 1.0
-    num_samples = 5000  # Number of samples for covariance estimation
+    num_samples = 200  # Number of samples for covariance estimation
 
     # Test multiple σ²ᵢ/σ²ᵥ ratios (power ratios between harmonic components)
     sigma_ratios = [0.01, 0.1, 1, 10]
     
     # Dense sampling for theory (smooth curves)
-    rho_theory = np.linspace(0.5, 1., 100)
+    rho_theory = np.linspace(0.5, 1.0, 100)
 
     # Sparse sampling for simulation (markers)
-    rho_sim = np.linspace(0.5, 1., 15)
+    rho_sim = np.linspace(0.5, 0.99, 15)
 
     # Compute theoretical curves for different ratios
     print("\n1. Computing theoretical η curves for different σ²ᵢ/σ²ᵥ ratios...")
