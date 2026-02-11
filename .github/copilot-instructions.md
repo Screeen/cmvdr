@@ -21,11 +21,31 @@ This is the cMVDR (Cyclic Minimum-Variance Distortionless-Response) beamformer p
 - Use pip for package management and installation
 
 ### Installation
-```bash
-# Standard pip installation (editable mode)
-pip install -e .
 
-# Verify installation
+**Step-by-step installation process:**
+
+1. Clone the repository:
+```bash
+git clone git@github.com:Screeen/cmvdr.git
+cd cmvdr
+```
+
+2. Create and activate a Python virtual environment:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+3. Install the package in editable mode:
+```bash
+pip install --upgrade pip
+pip install -e .
+```
+
+This will automatically install all dependencies defined in `pyproject.toml`.
+
+4. Verify installation:
+```bash
 python -c 'import cmvdr; print("cMVDR package successfully imported!")'
 ```
 
@@ -170,20 +190,49 @@ python main.py --data_type synthetic  # or instruments
 ## Important Notes
 
 ### Known Issues
-- Some systems may require PortAudio library for audio playback (used by sounddevice)
-- NumPy version compatibility: If you encounter `ImportError: numpy.core.multiarray failed to import`, install PESQ directly from GitHub:
-  ```bash
-  pip install https://github.com/ludlows/python-pesq/archive/master.zip
-  ```
-  This is already included in `pyproject.toml` dependencies but may need reinstallation if issues occur.
-- SciPy kaiser import: For scipy >= 1.4.0, if you see `ImportError: cannot import name 'kaiser' from 'scipy.signal'`, edit the pysepm util.py file to change:
-  ```python
-  # Old import
-  from scipy.signal import firls,kaiser,upfirdn
-  # New import
-  from scipy.signal import firls,upfirdn
-  from scipy.signal.windows import kaiser
-  ```
+
+#### Cannot import `kaiser` from `scipy.signal`
+For scipy >= 1.4.0, if you see `ImportError: cannot import name 'kaiser' from 'scipy.signal'`, edit the pysepm util.py file to change:
+```python
+# Old import
+from scipy.signal import firls,kaiser,upfirdn
+# New import
+from scipy.signal import firls,upfirdn
+from scipy.signal.windows import kaiser
+```
+
+#### Installing without uv
+If you don't have `uv` installed or prefer using standard pip, use the installation method above:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate  
+pip install --upgrade pip
+pip install -e .  # Use -e for editable installation
+```
+
+#### Package import issues after installation
+If you installed the package with `pip install -e .` and have import issues, make sure:
+1. Your virtual environment is activated
+2. You're running Python from the correct environment
+3. The installation completed without errors
+
+You can verify the package is installed by running:
+```bash
+pip list | grep cmvdr
+```
+
+#### OSError: PortAudio library not found
+Some systems may require the PortAudio library for audio playback (used by sounddevice).
+Your Python package (`sounddevice` or something else that uses PortAudio) can't find the underlying PortAudio C library on your system.
+Installing the Python package alone isn't enough — the native library must also be installed.
+How you fix it depends on your OS. You can still run the experiments, but you won't be able to listen to the audio output.
+
+#### ImportError: numpy.core.multiarray
+If you encounter `ImportError: numpy.core.multiarray failed to import`, install PESQ directly from GitHub:
+```bash
+pip install https://github.com/ludlows/python-pesq/archive/master.zip
+```
+This is already included in `pyproject.toml` dependencies but may need reinstallation if issues occur.
 
 ### Performance Considerations
 - Beamforming is computationally intensive
