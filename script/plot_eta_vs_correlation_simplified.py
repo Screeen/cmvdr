@@ -129,14 +129,97 @@ def compute_theoretical_eta(rho, sigma_i_to_v_ratio=1.0):
     return 1 - rho ** 2 / (1 + sigma_i_to_v_ratio)
 
 
-def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, noise_power=1.0):
+def generate_signal_samples(rho, P, sigma_i_to_v_ratio=1.0, noise_power=1.0, 
+                            target_power=1.0, num_samples=1000):
+    """
+    Generate signal samples for covariance estimation.
+    
+    Creates samples of target signal, interference, and correlated noise,
+    then combines them to form noisy signal samples.
+    
+    Parameters
+    ----------
+    rho : float
+        Spectral correlation coefficient for noise (0 to 1)
+    P : int
+        Number of cyclic shifts (virtual channels)
+    sigma_i_to_v_ratio : float
+        Ratio σ²ᵢ/σ²ᵥ (interference to noise power ratio)
+    noise_power : float
+        Noise power σ²ᵥ
+    target_power : float
+        Target signal power
+    num_samples : int
+        Number of samples to generate (default: 1000)
+        
+    Returns
+    -------
+    tuple
+        (noisy_samples, noise_samples) both of shape (P, num_samples)
+    """
+    M = 1  # Single microphone
+    
+    # Calculate interference power
+    interf_power = sigma_i_to_v_ratio * noise_power
+    
+    # Generate target signal (white, uncorrelated across frequency shifts)
+    # Target is only on the first element (frequency bin)
+    target_signal = np.zeros((P, num_samples), dtype=np.complex128)
+    target_signal[0, :] = u.circular_gaussian((num_samples,)) * np.sqrt(target_power)
+    
+    # Generate interference signal (on second element)
+    interference_signal = np.zeros((P, num_samples), dtype=np.complex128)
+    if P > 1:
+        interference_signal[1, :] = u.circular_gaussian((num_samples,)) * np.sqrt(interf_power)
+    
+    # Generate correlated noise across all frequency shifts
+    # Use the equicorrelated covariance structure
+    cov_noise = generate_equicorrelated_covariance(rho, P, noise_power)
+    noise_signal = generate_correlated_signal(cov_noise, (P, num_samples), cpx_data=True)
+    
+    # Combine all components
+    noisy_signal = target_signal + interference_signal + noise_signal
+    
+    # Total noise is interference + noise
+    total_noise = interference_signal + noise_signal
+    
+    return noisy_signal, total_noise
+
+
+def estimate_covariance_batch(signal_samples):
+    """
+    Estimate covariance matrix from signal samples using batch strategy.
+    
+    Implements compact version of covariance estimation:
+    cov = (signal @ signal.conj().T) / num_samples
+    
+    Parameters
+    ----------
+    signal_samples : ndarray
+        Signal samples of shape (P, num_samples)
+        
+    Returns
+    -------
+    ndarray
+        Estimated covariance matrix of shape (P, P)
+    """
+    num_samples = signal_samples.shape[1]
+    
+    # Estimate covariance: (signal @ signal^H) / L
+    cov_estimated = (signal_samples @ signal_samples.conj().T) / num_samples
+    
+    return cov_estimated
+
+
+def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, noise_power=1.0, num_samples=1000):
     """
     Compute empirical η using cMVDR beamformer on a single frequency bin.
     
     This function:
-    1. Creates synthetic covariance matrices following the paper's model
-    2. Runs cMVDR beamformer to get optimal weights
-    3. Computes output noise power: η = w^H * Φ_n * w / noise_power
+    1. Generates signal samples with controlled correlation
+    2. Estimates covariances from generated samples using batch strategy
+    3. Runs cMVDR beamformer to get optimal weights
+    4. Computes output noise power: η = w^H * Φ_n * w / noise_power
     
     Based on the paper, the covariance structure for M=1 with P shifts is:
     S_x = S_s + S_i + S_v
@@ -155,6 +238,8 @@ def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, noise_power
         Ratio σ²ᵢ/σ²ᵥ (interference to noise power ratio)
     noise_power : float
         Noise power σ²ᵥ (noisePow in the paper)
+    num_samples : int
+        Number of samples to generate for covariance estimation (default: 1000)
         
     Returns
     -------
@@ -164,46 +249,35 @@ def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, noise_power
     # For single microphone (M=1), single frequency bin (K=1)
     M = 1
     K = 1
-
-    # Calculate interference power from ratio
-    interf_power = sigma_i_to_v_ratio * noise_power
-
+    
     # Target power (arbitrary, doesn't affect η)
     target_power = 1.0
-
-    # Generate noise covariance with correlation ρ
-    # S_v = noisePow * [[1, ρ], [ρ, 1]] (for P=2 case, extends to P dimensions)
+    
+    # Generate signal samples
+    noisy_samples, total_noise_samples = generate_signal_samples(
+        rho, P, sigma_i_to_v_ratio, noise_power, target_power, num_samples
+    )
+    
+    # Estimate covariances from generated samples using batch strategy
+    cov_noisy_wb = np.zeros((K, M * P, M * P), dtype=np.complex128)
     cov_noise_wb = np.zeros((K, M * P, M * P), dtype=np.complex128)
-    cov_noise_wb[0] = generate_equicorrelated_covariance(rho, M * P, noise_power)
-
-    # Build the noisy covariance following the paper's model:
-    # S_x = S_s + S_i + S_v
-    cov_noisy_wb = cov_noise_wb.copy()  # Start with S_v
-
-    # Add target signal on first element: S_s
-    cov_noisy_wb[0, 0, 0] += target_power
-
-    # Add interference on second element: S_i
-    if M * P > 1:
-        cov_noisy_wb[0, 1, 1] += interf_power
-
-    # Narrowband covariances (fallback for non-cyclic bins)
+    
+    # Estimate using batch covariance estimation (compact version)
+    # cov = (signal @ signal.conj().T) / num_samples
+    cov_noisy_wb[0] = estimate_covariance_batch(noisy_samples)
+    cov_noise_wb[0] = estimate_covariance_batch(total_noise_samples)
+    
+    # Narrowband covariances (not used for cyclic bins, but needed for API)
     cov_noise_nb = np.zeros((K, M, M), dtype=np.complex128)
-    # cov_noise_nb[0] = np.eye(M) * noise_power
-    #
     cov_noisy_nb = np.zeros((K, M, M), dtype=np.complex128)
-    # cov_noisy_nb[0] = np.eye(M) * (noise_power + target_power)
-
+    
     # Create covariance dictionary
-    cov_dict_oracle = {
+    cov_dict = {
         'noisy_wb': cov_noisy_wb,
         'noise_wb': cov_noise_wb,
         'noisy_nb': cov_noisy_nb,
         'noise_nb': cov_noise_nb
     }
-
-    # Generate correlated signal and estimate covariance from it (blind estimation)
-    # cov_dict
 
     # Initialize beamformer
     loadings_cfg = (0, 0, 1000)  # (min, max, max_condition_number)
@@ -220,26 +294,23 @@ def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, noise_power
         weights, err_flags, cond_num_cov, sv = cm.compute_cyclic_mvdr_beamformers(
             cov_dict, 'blind', cyclic_bins, P_all=P_all
         )
-
+        
         # Extract weights for the single frequency bin
         w_c = weights[:, 0]  # Shape: (M*P,)
-
+        
         # Compute output noise power: w^H * Φ_n * w
-        # Total noise includes both interference and noise: S_n = S_i + S_v
-        cov_total_noise_wb = cov_noise_wb.copy()
-        if M * P > 1:
-            cov_total_noise_wb[0, 1, 1] += interf_power
-
-        output_noise_power = np.real(np.conj(w_c) @ cov_total_noise_wb[0] @ w_c)
-
+        # Use the estimated noise covariance
+        output_noise_power = np.real(np.conj(w_c) @ cov_noise_wb[0] @ w_c)
+        
         # Input noise power (per component) 
+        interf_power = sigma_i_to_v_ratio * noise_power
         input_noise_power = noise_power + interf_power
-
+        
         # Residual noise factor: η = output_noise / input_noise
         eta = output_noise_power / input_noise_power
-
+        
         return eta
-
+        
     except Exception as e:
         print(f"Warning: Beamformer computation failed for rho={rho}, ratio={sigma_i_to_v_ratio}: {e}")
         return 1.0  # Return no noise reduction if failed
@@ -259,7 +330,7 @@ class SimpleHarmonicInfo:
         return self._P_all
 
 
-def run_simulation_sweep(rho_values, sigma_i_to_v_ratio=1.0, P=8, noise_power=1.0):
+def run_simulation_sweep(rho_values, sigma_i_to_v_ratio=1.0, P=8, noise_power=1.0, num_samples=1000):
     """
     Run simulation sweep over correlation values.
     
@@ -273,6 +344,8 @@ def run_simulation_sweep(rho_values, sigma_i_to_v_ratio=1.0, P=8, noise_power=1.
         Number of cyclic shifts (virtual channels)
     noise_power : float
         Input noise power
+    num_samples : int
+        Number of samples to generate for covariance estimation (default: 1000)
         
     Returns
     -------
@@ -280,11 +353,11 @@ def run_simulation_sweep(rho_values, sigma_i_to_v_ratio=1.0, P=8, noise_power=1.
         Array of empirical η values
     """
     eta_empirical = []
-
+    
     for rho in rho_values:
-        eta = compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio, noise_power)
+        eta = compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio, noise_power, num_samples)
         eta_empirical.append(eta)
-
+    
     return np.array(eta_empirical)
 
 
@@ -488,8 +561,9 @@ def main():
     print("=" * 60)
 
     # Configuration parameters
-    P = 2  # Number of cyclic shifts (virtual channels)
+    P = 8  # Number of cyclic shifts (virtual channels)
     noise_power = 1.0
+    num_samples = 1000  # Number of samples for covariance estimation
 
     # Test multiple σ²ᵢ/σ²ᵥ ratios (power ratios between harmonic components)
     sigma_ratios = [0.01, 0.1, 1, 10]
@@ -515,7 +589,8 @@ def main():
     eta_sim_dict = {}
     for ratio in sigma_ratios:
         print(f"   Processing σ²ᵢ/σ²ᵥ = {ratio:5.2f}...")
-        eta_sim_dict[ratio] = run_simulation_sweep(rho_sim, sigma_i_to_v_ratio=ratio, P=P, noise_power=noise_power)
+        eta_sim_dict[ratio] = run_simulation_sweep(rho_sim, sigma_i_to_v_ratio=ratio, P=P, 
+                                                   noise_power=noise_power, num_samples=num_samples)
         print(f"      Simulation: η range [{eta_sim_dict[ratio].min():.4f}, {eta_sim_dict[ratio].max():.4f}]")
 
     # Create output directory
