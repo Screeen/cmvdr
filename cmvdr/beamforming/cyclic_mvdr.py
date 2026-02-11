@@ -1,3 +1,18 @@
+"""
+Cyclic Minimum Variance Distortionless Response (cMVDR) Beamformer
+
+Also known as cyclic Minimum Power Distortionless Response (cMPDR) beamformer.
+A model-based algorithm for cancelling dominant almost-cyclostationary (ACS) 
+interferers such as engines, fans, and musical instruments.
+
+Unlike conventional FRESH frameworks that rely on rigid cyclostationary assumptions,
+cMVDR is designed to accommodate the ACS properties of acoustic noise. By augmenting
+the observation vector with frequency-shifted versions of the input, it exploits
+statistical redundancy to steer nulls in both space and frequency while maintaining
+distortionless response for the target signal.
+
+Works even in single-channel configurations where spatial discrimination is impossible.
+"""
 import numpy as np
 import scipy
 import warnings
@@ -9,6 +24,24 @@ eps = 1e-15
 
 
 class CyclicMVDR(Beamformer):
+    """
+    Cyclic Minimum Variance Distortionless Response (cMVDR/cMPDR) Beamformer.
+    
+    A beamformer designed for cancelling almost-cyclostationary (ACS) interferers
+    by exploiting both spatial and spectral redundancy. Extends classic MVDR 
+    with frequency-shifted observations to handle harmonic and quasi-harmonic noise.
+    
+    Parameters
+    ----------
+    loadings_cfg : tuple
+        Configuration for diagonal loading (min, max, max_condition_number)
+    sig_shape_k_m : tuple
+        Signal shape (K, M) where K is number of frequency bins, M is number of mics
+    minimize_noisy_cov_mvdr : bool, optional
+        If True, minimizes noisy covariance; if False, minimizes noise covariance
+    noise_var_rtf : float, optional
+        Noise variance for RTF estimation
+    """
 
     def __init__(self, loadings_cfg: tuple, sig_shape_k_m, minimize_noisy_cov_mvdr=True, noise_var_rtf=0):
         super().__init__(loadings_cfg, sig_shape_k_m)
@@ -61,7 +94,7 @@ class CyclicMVDR(Beamformer):
         cond_num_cov = np.zeros(K_nfft)
         singular_values = np.zeros((K_nfft, M))
 
-        if M == 1:  # Single-channel case: no beamforming needed
+        if M == 1:  # Single-channel case: no spatial beamforming needed
             weights_mvdr[0, :] = 1
             return weights_mvdr, error_flag, cond_num_cov, singular_values
 
@@ -87,7 +120,17 @@ class CyclicMVDR(Beamformer):
 
     def compute_cyclic_mvdr_beamformers(self, cov_dict, which_variant, cyclic_bins, P_all=np.array([]),
                                         name_input_sig='noisy', speech_rtf_oracle=np.array([])):
-        """ Compute the weights for the cyclic MVDR beamformer (cMVDR).
+        """ 
+        Compute the weights for the cyclic MVDR beamformer (cMVDR/cMPDR).
+        
+        This method implements the core cyclic beamforming algorithm that exploits
+        almost-cyclostationary (ACS) properties of interferers. By using frequency-shifted
+        versions of the input signal, it creates virtual channels that enable noise 
+        reduction even in single-microphone scenarios.
+        
+        Unlike rigid cyclostationary approaches, this accommodates the ACS nature of
+        acoustic noise sources (e.g., harmonics with time-varying amplitudes).
+        
         Parameters
         ----------
         cov_dict : dict
@@ -96,7 +139,11 @@ class CyclicMVDR(Beamformer):
         which_variant : str
             Variant of the MVDR beamformer to use. Options are 'blind', 'semi-oracle', 'oracle'.
         cyclic_bins : array_like
-            Indices of the cyclic frequency bins.
+            Indices of the cyclic frequency bins where ACS properties are exploited.
+        P_all : array_like, optional
+            Number of cyclic shifts per frequency bin.
+        name_input_sig : str, optional
+            Name of input signal in cov_dict. Default is 'noisy'.
         speech_rtf_oracle : array_like, optional
             Oracle relative transfer functions (RTFs) of the speech signal. Required if which_variant is
             'oracle' or 'semi-oracle'.

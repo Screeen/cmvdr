@@ -1,5 +1,5 @@
 # cMVDR: Cyclic minimum-variance distortionless-response beamformer
-Python implementation of the cyclic MVDR beamformer — an extension of the classic MVDR that exploits both spatial and spectral correlations to better suppress almost-periodic noise (e.g., engines, fans, musical instruments).
+Python implementation of the cyclic MVDR beamformer (also known as cyclic minimum power distortionless response, cMPDR) — a model-based algorithm for cancelling dominant **almost-cyclostationary** (ACS) interferers such as engines, fans, and musical instruments.
 
 By exploiting correlations across microphones and frequency components, the cyclic minimum-variance distortionless-response (cMVDR) beamformer achieves improved noise reduction, especially in low signal-to-noise ratio (SNR) scenarios.
 The package includes tools for estimating resonant frequencies via periodogram analysis and computing optimal frequency shifts for inharmonic signals.
