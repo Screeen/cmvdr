@@ -94,7 +94,7 @@ class CyclicMVDR(Beamformer):
         cond_num_cov = np.zeros(K_nfft)
         singular_values = np.zeros((K_nfft, M))
 
-        if M == 1:  # Single-channel case: cyclic processing still enables noise reduction via frequency shifts
+        if M == 1:  # Single-channel case: no spatial beamforming needed
             weights_mvdr[0, :] = 1
             return weights_mvdr, error_flag, cond_num_cov, singular_values
 
