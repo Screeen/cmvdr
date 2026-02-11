@@ -1,5 +1,5 @@
 """
-Plot theoretical vs simulated noise reduction factor (η).
+Plot theoretical vs simulated residual noise factor (η).
 
 This script validates the theoretical noise reduction performance from equation 
 eq:res_noise_cmvdr:factor against simulation results using the cMVDR/cMPDR beamformer.
@@ -379,6 +379,8 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
         Output file path
     use_db : bool
         If True, plot in dB scale
+    show_legend : bool
+        If True, show legend and caption (default: True)
     """
     # Check if LaTeX is available
     use_latex = plotter.is_tex_plotting_available()
@@ -392,7 +394,7 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
     width = u.get_plot_width_double_column_latex()
     height = width * 0.75  # Aspect ratio
 
-    fig, ax = plt.subplots(figsize=(width, height))
+    fig, ax = plt.subplots(figsize=(width, height), constrained_layout=True)
 
     # Color scheme for different ratios
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
@@ -410,19 +412,18 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
         color = colors[idx % len(colors)]
         marker = markers[idx % len(markers)]
 
+        # Simplified label: only show the ratio value
         if use_latex:
-            label_theory = r'Theory: $\sigma_i^2/\sigma_v^2 = ' + f'{ratio:.2g}' + r'$'
-            label_sim = r'Sim: $\sigma_i^2/\sigma_v^2 = ' + f'{ratio:.2g}' + r'$'
+            label_ratio = r'$\sigma_i^2/\sigma_v^2 = ' + f'{ratio:.2g}' + r'$'
         else:
-            label_theory = f'Theory: σ²ᵢ/σ²ᵥ = {ratio:.2g}'
-            label_sim = f'Sim: σ²ᵢ/σ²ᵥ = {ratio:.2g}'
+            label_ratio = f'σ²ᵢ/σ²ᵥ = {ratio:.2g}'
 
-        # Plot theory line
+        # Plot theory line (only this one gets the label)
         ax.plot(rho_theory, eta_theory_plot,
                 color=color, linestyle='-', linewidth=1.5,
-                label=label_theory)
+                label=label_ratio)
 
-        # Plot simulation markers with same color
+        # Plot simulation markers with same color (no label)
         if ratio in eta_sim_dict:
             eta_sim = eta_sim_dict[ratio]
             if use_db:
@@ -432,11 +433,10 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
 
             ax.plot(rho_sim, eta_sim_plot,
                     color=color, marker=marker, linestyle='',
-                    markersize=4, markerfacecolor='none', markeredgewidth=1.0,
-                    label=label_sim)
+                    markersize=4, markerfacecolor='none', markeredgewidth=1.0)
 
     if use_db:
-        ylabel = r'$\eta$ (dB)' if use_latex else 'η (dB)'
+        ylabel = r'$\eta$ [dB]' if use_latex else 'η [dB]'
     else:
         ylabel = r'$\eta$' if use_latex else 'η'
 
@@ -444,97 +444,13 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
     ax.set_ylabel(ylabel)
 
     if use_latex:
-        ax.set_title(r'Noise Reduction Factor $\eta$ vs.\ Correlation')
+        ax.set_title(r'Residual noise factor $\eta$ vs.\ correlation')
     else:
-        ax.set_title('Noise Reduction Factor η vs. Correlation')
+        ax.set_title('Residual noise factor η vs. Correlation')
 
     ax.grid(True, alpha=0.3)
-    ax.legend(loc='best', fontsize=7, ncol=2)
-    ax.set_xlim([0, 1])
-
-    plt.tight_layout()
-
-    # Save figure
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"   Figure saved to: {output_path}")
-
-    # Also save as PDF
-    pdf_path = output_path.with_suffix('.pdf')
-    fig.savefig(pdf_path, bbox_inches='tight')
-    print(f"   PDF saved to: {pdf_path}")
-
-    plt.close(fig)
-
-    return fig
-
-
-def create_plot(rho_theory, eta_theory, rho_sim, eta_sim, output_path, use_db=False):
-    """
-    Create comparison plot of theoretical vs simulated noise reduction.
-    
-    Parameters
-    ----------
-    rho_theory : ndarray
-        Theoretical correlation values (dense, for smooth curves)
-    eta_theory : ndarray
-        Theoretical η values
-    rho_sim : ndarray
-        Simulation correlation values (sparse, for markers)
-    eta_sim : ndarray
-        Empirical η values from simulation
-    output_path : Path
-        Output file path
-    use_db : bool
-        If True, plot in dB scale
-    """
-    # Check if LaTeX is available
-    use_latex = plotter.is_tex_plotting_available()
-    if not use_latex:
-        print("   LaTeX not available, using standard matplotlib rendering")
-
-    # Set plot options based on LaTeX availability
-    u.set_plot_options(use_tex=use_latex)
-
-    # Use proper figure size for double-column LaTeX documents
-    width = u.get_plot_width_double_column_latex()
-    height = width * 0.75  # Aspect ratio
-
-    fig, ax = plt.subplots(figsize=(width, height))
-
-    # Plot theory (solid line)
-    if use_db:
-        eta_theory_plot = 10 * np.log10(eta_theory + 1e-10)
-        eta_sim_plot = 10 * np.log10(eta_sim + 1e-10)
-        ylabel = r'$\eta$ (dB)' if use_latex else 'η (dB)'
-    else:
-        eta_theory_plot = eta_theory
-        eta_sim_plot = eta_sim
-        ylabel = r'$\eta$' if use_latex else 'η'
-
-    ax.plot(rho_theory, eta_theory_plot,
-            color='tab:blue', linestyle='-', linewidth=1.5,
-            label='Theory')
-
-    # Plot simulation (markers)
-    ax.plot(rho_sim, eta_sim_plot,
-            color='tab:orange', marker='o', linestyle='',
-            markersize=6, markerfacecolor='none', markeredgewidth=1.5,
-            label='Simulation (cMVDR)')
-
-    ax.set_xlabel(r'Spectral correlation $|\rho|$' if use_latex else 'Spectral correlation |ρ|')
-    ax.set_ylabel(ylabel)
-
-    if use_latex:
-        ax.set_title(r'Noise Reduction Factor $\eta$ vs.\ Correlation')
-    else:
-        ax.set_title('Noise Reduction Factor η vs. Correlation')
-
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc='best')
-    ax.set_xlim([0, 1])
-
-    plt.tight_layout()
+    ax.legend(loc='best', fontsize=8)
+    ax.set_xlim([0.5, 1])
 
     # Save figure
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -555,7 +471,7 @@ def main():
     """Main execution function."""
 
     print("=" * 60)
-    print("Noise Reduction Factor η vs Correlation")
+    print("Residual Noise Factor η vs Correlation")
     print("=" * 60)
 
     # Configuration parameters
@@ -567,10 +483,10 @@ def main():
     sigma_ratios = [0.01, 0.1, 1, 10]
     
     # Dense sampling for theory (smooth curves)
-    rho_theory = np.linspace(0, 0.99, 100)
+    rho_theory = np.linspace(0.5, 1., 100)
 
     # Sparse sampling for simulation (markers)
-    rho_sim = np.linspace(0, 0.99, 15)
+    rho_sim = np.linspace(0.5, 1., 15)
 
     # Compute theoretical curves for different ratios
     print("\n1. Computing theoretical η curves for different σ²ᵢ/σ²ᵥ ratios...")
