@@ -4,13 +4,14 @@ Plot theoretical vs simulated residual noise factor (η).
 This script validates the theoretical noise reduction performance from equation 
 eq:res_noise_cmvdr:factor against simulation results using the cMVDR/cMPDR beamformer.
 
-Theoretical formula: η = 1 - ρ² / (1 + σ²ᵢ/σ²ᵥ)
+Theoretical formula: η = 1 - ρ² / (1 + σ²ₘ/σ²ᵥ)
 where:
 - ρ is the spectral correlation coefficient between harmonic components
-- σ²ᵢ is the power of one harmonic component
+- σ²ₘ is the power of modulated target harmonic component
+    (it's 0 if target has no power at shifted frequency, but it is not controllable)
 - σ²ᵥ is the power of another harmonic component (σ²ᵥ > 0 always)
 
-The ratio σ²ᵢ/σ²ᵥ represents the relative power between different harmonic components.
+The ratio σ²ₘ/σ²ᵥ represents the relative power between different harmonic components.
 
 This script uses synthetic covariance matrices with equicorrelated structure
 to directly test the beamformer performance without complex signal generation.
@@ -108,28 +109,28 @@ def generate_equicorrelated_covariance(rho, P, noise_power=1.0):
     return cov
 
 
-def compute_theoretical_eta(rho, sigma_i_to_v_ratio=1.0):
+def compute_theoretical_eta(rho, sigma_m_to_v_ratio=1.0):
     """
     Calculate theoretical residual noise factor η.
     
-    Formula: η = 1 - ρ² / (1 + σ²ᵢ/σ²ᵥ)
+    Formula: η = 1 - ρ² / (1 + σ²ₘ/σ²ᵥ)
     
     Parameters
     ----------
     rho : float or ndarray
         Spectral correlation coefficient |ρ| (0 to 1)
-    sigma_i_to_v_ratio : float
-        Power ratio σ²ᵢ/σ²ᵥ between harmonic components (default: 1.0, must be > 0)
+    sigma_m_to_v_ratio : float
+        Power ratio σ²ₘ/σ²ᵥ between harmonic components (default: 1.0, must be > 0)
         
     Returns
     -------
     float or ndarray
         Residual noise factor η
     """
-    return 1 - rho ** 2 / (1 + sigma_i_to_v_ratio)
+    return 1 - rho ** 2 / (1 + sigma_m_to_v_ratio)
 
 
-def generate_signal_samples(rho, P, sigma_i_to_v_ratio=1.0, noise_power=1.0, 
+def generate_signal_samples(rho, P, sigma_m_to_v_ratio=1.0, noise_power=1.0,
                             target_power=1.0, num_samples=1000):
     """
     Generate signal samples for covariance estimation.
@@ -143,8 +144,8 @@ def generate_signal_samples(rho, P, sigma_i_to_v_ratio=1.0, noise_power=1.0,
         Spectral correlation coefficient for noise (0 to 1)
     P : int
         Number of cyclic shifts (virtual channels)
-    sigma_i_to_v_ratio : float
-        Ratio σ²ᵢ/σ²ᵥ (interference to noise power ratio)
+    sigma_m_to_v_ratio : float
+        Ratio σ²ₘ/σ²ᵥ (interference to noise power ratio)
     noise_power : float
         Noise power σ²ᵥ
     target_power : float
@@ -159,7 +160,7 @@ def generate_signal_samples(rho, P, sigma_i_to_v_ratio=1.0, noise_power=1.0,
     """
 
     # Calculate interference power
-    interferer_power = sigma_i_to_v_ratio * noise_power
+    interferer_power = sigma_m_to_v_ratio * noise_power
     
     # Generate target signal (white, uncorrelated across frequency shifts)
     # Target is only on the first element (frequency bin)
@@ -213,7 +214,7 @@ def estimate_covariance_batch(signal_samples):
     return cov_estimated
 
 
-def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, input_noise_power=1.0, num_samples=1000):
+def compute_empirical_eta_single_bin(rho, P, sigma_m_to_v_ratio=1.0, input_noise_power=1.0, num_samples=1000):
     """
     Compute empirical η using cMVDR beamformer on a single frequency bin.
     
@@ -227,7 +228,7 @@ def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, input_noise
     S_x = S_s + S_i + S_v
     where:
     - S_s: target signal (targetPow on first element)
-    - S_i: interference (interfPow = σ²ᵢ on second element)
+    - S_i: interference (interfPow = σ²ₘ on second element)
     - S_v: noise (noisePow = σ²ᵥ with correlation ρ)
     
     Parameters
@@ -236,8 +237,8 @@ def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, input_noise
         Target spectral correlation (0 to 1)
     P : int
         Number of cyclic shifts (virtual channels)
-    sigma_i_to_v_ratio : float
-        Ratio σ²ᵢ/σ²ᵥ (interference to noise power ratio)
+    sigma_m_to_v_ratio : float
+        Ratio σ²ₘ/σ²ᵥ (interference to noise power ratio)
     input_noise_power : float
         Noise power σ²ᵥ (noisePow in the paper)
     num_samples : int
@@ -257,7 +258,7 @@ def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, input_noise
     
     # Generate signal samples
     noisy_samples, total_noise_samples = generate_signal_samples(
-        rho, P, sigma_i_to_v_ratio, input_noise_power, target_power, num_samples
+        rho, P, sigma_m_to_v_ratio, input_noise_power, target_power, num_samples
     )
     
     # Estimate covariances from generated samples using batch strategy
@@ -310,7 +311,7 @@ def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, input_noise
         return eta
         
     except Exception as e:
-        print(f"Warning: Beamformer computation failed for rho={rho}, ratio={sigma_i_to_v_ratio}: {e}")
+        print(f"Warning: Beamformer computation failed for rho={rho}, ratio={sigma_m_to_v_ratio}: {e}")
         return 1.0  # Return no noise reduction if failed
 
 
@@ -328,7 +329,7 @@ class SimpleHarmonicInfo:
         return self._P_all
 
 
-def run_simulation_sweep(rho_values, sigma_i_to_v_ratio=1.0, P=8, noise_power=1.0, num_samples=1000):
+def run_simulation_sweep(rho_values, sigma_m_to_v_ratio=1.0, P=8, noise_power=1.0, num_samples=1000):
     """
     Run simulation sweep over correlation values.
     
@@ -336,8 +337,8 @@ def run_simulation_sweep(rho_values, sigma_i_to_v_ratio=1.0, P=8, noise_power=1.
     ----------
     rho_values : array_like
         Array of spectral correlation values to test
-    sigma_i_to_v_ratio : float
-        Ratio σ²ᵢ/σ²ᵥ (interference to noise power ratio)
+    sigma_m_to_v_ratio : float
+        Ratio σ²ₘ/σ²ᵥ (interference to noise power ratio)
     P : int
         Number of cyclic shifts (virtual channels)
     noise_power : float
@@ -353,7 +354,7 @@ def run_simulation_sweep(rho_values, sigma_i_to_v_ratio=1.0, P=8, noise_power=1.
     eta_empirical = []
     
     for rho in rho_values:
-        eta = compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio, noise_power, num_samples)
+        eta = compute_empirical_eta_single_bin(rho, P, sigma_m_to_v_ratio, noise_power, num_samples)
         eta_empirical.append(eta)
     
     return np.array(eta_empirical)
@@ -361,20 +362,20 @@ def run_simulation_sweep(rho_values, sigma_i_to_v_ratio=1.0, P=8, noise_power=1.
 
 def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_sim_dict, output_path, use_db=False):
     """
-    Create comparison plot with multiple theoretical curves for different σ²ᵢ/σ²ᵥ ratios.
+    Create comparison plot with multiple theoretical curves for different σ²ₘ/σ²ᵥ ratios.
     
     Parameters
     ----------
     rho_theory : ndarray
         Theoretical correlation values (dense, for smooth curves)
     eta_theory_dict : dict
-        Dict mapping σ²ᵢ/σ²ᵥ ratios to theoretical η arrays
+        Dict mapping σ²ₘ/σ²ᵥ ratios to theoretical η arrays
     sigma_ratios : list
-        List of σ²ᵢ/σ²ᵥ ratios to plot
+        List of σ²ₘ/σ²ᵥ ratios to plot
     rho_sim : ndarray
         Simulation correlation values (sparse, for markers)
     eta_sim_dict : dict
-        Dict mapping σ²ᵢ/σ²ᵥ ratios to empirical η arrays from simulation
+        Dict mapping σ²ₘ/σ²ᵥ ratios to empirical η arrays from simulation
     output_path : Path
         Output file path
     use_db : bool
@@ -400,7 +401,7 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
     markers = ['o', 's', '^', 'D']
 
-    # Plot theory curves and simulation markers for each σ²ᵢ/σ²ᵥ ratio
+    # Plot theory curves and simulation markers for each σ²ₘ/σ²ᵥ ratio
     for idx, ratio in enumerate(sigma_ratios):
         eta_theory = eta_theory_dict[ratio]
 
@@ -415,13 +416,13 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
         # Simplified label: only show the ratio value
         ratio_db = 10 * np.log10(ratio + 1e-10)
         if use_latex:
-            label_ratio = r'$\sigma_i^2/\sigma_v^2 = ' + f'{ratio_db:.0f}'+r' \text{dB}' + r'$'
+            label_ratio = r'$\sigma_m^2/\sigma_v^2 = ' + f'{ratio_db:.0f}'+r' \text{dB}' + r'$'
         else:
-            label_ratio = f'σ²ᵢ/σ²ᵥ = {ratio_db:.0f}dB'
+            label_ratio = f'σ²ₘ/σ²ᵥ = {ratio_db:.0f}dB'
 
         # Plot theory line (only this one gets the label)
         ax.plot(rho_theory, eta_theory_plot,
-                color=color, linestyle='-', linewidth=1.5,
+                color=color, linestyle='-', linewidth=1.2,
                 label=label_ratio)
 
         # Plot simulation markers with same color (no label)
@@ -434,7 +435,7 @@ def create_plot_multi(rho_theory, eta_theory_dict, sigma_ratios, rho_sim, eta_si
 
             ax.plot(rho_sim, eta_sim_plot,
                     color=color, marker=marker, linestyle='',
-                    markersize=4, markerfacecolor='none', markeredgewidth=1.0)
+                    markersize=4, markerfacecolor='none', markeredgewidth=0.5)
 
     if use_db:
         ylabel = r'Residual noise factor $\eta$ [dB]' if use_latex else 'η [dB]'
@@ -480,7 +481,7 @@ def main():
     noise_power = 1.0
     num_samples = 200  # Number of samples for covariance estimation
 
-    # Test multiple σ²ᵢ/σ²ᵥ ratios (power ratios between harmonic components)
+    # Test multiple σ²ₘ/σ²ᵥ ratios (power ratios between harmonic components)
     sigma_ratios = [0.01, 0.1, 1, 10]
     
     # Dense sampling for theory (smooth curves)
@@ -490,21 +491,21 @@ def main():
     rho_sim = np.linspace(0.5, 0.99, 15)
 
     # Compute theoretical curves for different ratios
-    print("\n1. Computing theoretical η curves for different σ²ᵢ/σ²ᵥ ratios...")
+    print("\n1. Computing theoretical η curves for different σ²ₘ/σ²ᵥ ratios...")
     eta_theory_dict = {}
     for ratio in sigma_ratios:
-        eta_theory_dict[ratio] = compute_theoretical_eta(rho_theory, sigma_i_to_v_ratio=ratio)
+        eta_theory_dict[ratio] = compute_theoretical_eta(rho_theory, sigma_m_to_v_ratio=ratio)
         print(
-            f"   σ²ᵢ/σ²ᵥ = {ratio:5.2f}: η range [{eta_theory_dict[ratio].min():.4f}, {eta_theory_dict[ratio].max():.4f}]")
+            f"   σ²ₘ/σ²ᵥ = {ratio:5.2f}: η range [{eta_theory_dict[ratio].min():.4f}, {eta_theory_dict[ratio].max():.4f}]")
 
     # Run simulations for EACH ratio configuration
-    print("\n2. Running cMVDR simulations for each σ²ᵢ/σ²ᵥ ratio...")
+    print("\n2. Running cMVDR simulations for each σ²ₘ/σ²ᵥ ratio...")
     print(f"   Using P={P} cyclic shifts")
 
     eta_sim_dict = {}
     for ratio in sigma_ratios:
-        print(f"   Processing σ²ᵢ/σ²ᵥ = {ratio:5.2f}...")
-        eta_sim_dict[ratio] = run_simulation_sweep(rho_sim, sigma_i_to_v_ratio=ratio, P=P, 
+        print(f"   Processing σ²ₘ/σ²ᵥ = {ratio:5.2f}...")
+        eta_sim_dict[ratio] = run_simulation_sweep(rho_sim, sigma_m_to_v_ratio=ratio, P=P,
                                                    noise_power=noise_power, num_samples=num_samples)
         print(f"      Simulation: η range [{eta_sim_dict[ratio].min():.4f}, {eta_sim_dict[ratio].max():.4f}]")
 
