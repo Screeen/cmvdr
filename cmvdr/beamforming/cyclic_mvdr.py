@@ -410,7 +410,7 @@ class CyclicMVDR(Beamformer):
     def check_if_rtf_needs_estimation(self, idx_chunk=0, warmup_chunks=Beamformer.rtf_est_warmup_chunks,
                                       interval_chunks=Beamformer.rtf_est_interval_chunks):
         """ Check if RTF needs to be estimated for the current chunk."""
-        if self.rtf_est.shape[1] == 1:  # Single-channel: RTF estimation not applicable (uses frequency shifts instead)
+        if self.rtf_est.shape[1] == 1:  # Single-channel case: no RTF estimation needed
             return np.zeros_like(self.rtf_needs_estimation)
         if idx_chunk < warmup_chunks or (interval_chunks > 0 and idx_chunk % interval_chunks == 0):
             return np.ones_like(self.rtf_needs_estimation)
