@@ -33,6 +33,7 @@ varying_params_values:
   rir_specs|rt60: ["0.160s", "0.360s", "0.610s"]
   noise|harmonic_correlation: [0.0, 0.2, 0.4, 0.6, 0.8, 0.99]
   noise|inharmonicity_percentage: [0.0, 0.01, 0.1, 0.5]
+  mod_error_perc: [0, 0.001, 0.01, 0.1, 1]  # Artificial frequency estimation errors (percentage) for sensitivity analysis
 
 beamforming:
   methods_dict:  # set everything to false to skip the computation of the covariance matrices and the beamforming

@@ -1,0 +1,19 @@
+# Description: Configuration file for cMVDR sensitivity test with artificial frequency estimation errors.
+# This configuration tests cMVDR robustness to errors in estimated harmonic frequencies.
+# The mod_error_perc parameter represents artificial estimation errors (percentage) for sensitivity analysis,
+# distinct from inharmonicity_percentage which models physical inharmonicity during signal generation.
+
+base: experiments/default.yaml
+varying_parameters_names: [mod_error_perc]
+metrics:
+  time: [ 'sisdr' ]
+
+# Set inharmonicity to 0 to isolate modulation errors from generation errors
+noise:
+  inharmonicity_percentage: 0
+
+harmonics_est:
+  max_num_harmonics_peaks: 16
+
+cov_estimation:
+  cov_est_forgetting_factor: 0.005 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.

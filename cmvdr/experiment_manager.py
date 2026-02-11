@@ -322,6 +322,12 @@ class ExperimentManager:
                         signals, cfg, dft_props, sin_generators=dg.sin_gen,
                         do_plots=do_plots and cfg['plot']['f0_spectrogram'])
 
+                    # Inject artificial frequency estimation errors for sensitivity analysis
+                    if cfg.get('mod_error_perc', 0) > 0 and harmonic_freqs_est.size > 0:
+                        harmonic_freqs_est = f0_manager.F0Manager.shift_frequencies_by_percentage(
+                            harmonic_freqs_est, cfg['mod_error_perc'] / 100, 
+                            all_same_sign=False, fixed_amount=False)
+
                     # Covariance estimation & beamforming
                     bfd_all_chunks_stft = ExperimentManager.run_cov_estimation_beamforming(
                         signals, f0man, f0_over_time, harmonic_freqs_est, cfg, dft_props, do_plots, SFT)
