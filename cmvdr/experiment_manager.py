@@ -418,7 +418,23 @@ class ExperimentManager:
 
         return ret
 
-    def run_cmvdr_inference_folder(self, input_path, cfg, output_path=None, noise_path=None, verbose=True):
+    @staticmethod
+    def get_noise_waveform_and_harmonics_source(noise_dict, noisy_file):
+        """ Get the noise waveform and harmonics estimation source. """
+        noise_waveform = np.array([])
+        harmonics_est_source = 'noisy'
+        if noise_dict:
+            noisy_fileid = noisy_file['fileid']
+            if noise_dict and noisy_fileid in (r["fileid"] for r in noise_dict.values()):
+                noise_waveform = next(r["signal"] for r in noise_dict.values() if r["fileid"] == noisy_fileid)
+                harmonics_est_source = 'noise'
+            else:
+                warnings.warn(f"No noise reference found for {noisy_file}, estimating harmonics from the noisy signal.")
+
+        return noise_waveform, harmonics_est_source
+
+    @staticmethod
+    def run_cmvdr_inference_folder(input_path, cfg, output_path=None, noise_path=None, verbose=True):
         """
         Run cMVDR inference on a given dataset (folder) and save the beamformed output to a specified output folder.
         This method loads audio files from the input folder, applies cMVDR beamforming, and
@@ -451,7 +467,7 @@ class ExperimentManager:
                                                                                                              noisy_data)
             cfg['harmonics_est']['source_signal_name'] = harmonics_est_source
 
-            signals_dict_all_variations_time[noisy_name] = self.run_cmvdr_inference_file(
+            signals_dict_all_variations_time[noisy_name] = ExperimentManager.run_cmvdr_inference_file(
                 noisy_data['signal'], cfg, noise_waveform=noise_waveform,
                 SFT_real=SFT_real, SFT=SFT, f0man=f0man, dft_props=dft_props)
 
@@ -467,21 +483,7 @@ class ExperimentManager:
             signals_dict_all_variations_time, output_path, fs=cfg['fs'], export_list=['cmvdr_blind'])
 
     @staticmethod
-    def get_noise_waveform_and_harmonics_source(noise_dict, noisy_file):
-        """ Get the noise waveform and harmonics estimation source. """
-        noise_waveform = np.array([])
-        harmonics_est_source = 'noisy'
-        if noise_dict:
-            noisy_fileid = noisy_file['fileid']
-            if noise_dict and noisy_fileid in (r["fileid"] for r in noise_dict.values()):
-                noise_waveform = next(r["signal"] for r in noise_dict.values() if r["fileid"] == noisy_fileid)
-                harmonics_est_source = 'noise'
-            else:
-                warnings.warn(f"No noise reference found for {noisy_file}, estimating harmonics from the noisy signal.")
-
-        return noise_waveform, harmonics_est_source
-
-    def run_cmvdr_inference_file(self, noisy_waveform, cfg, noise_waveform=np.array([]),
+    def run_cmvdr_inference_file(noisy_waveform, cfg, noise_waveform=np.array([]),
                                  SFT_real=None, SFT=None, f0man=None, dft_props=None):
         """ Run cMVDR inference on a single audio file (waveform). """
 
@@ -515,11 +517,11 @@ class ExperimentManager:
         # print("Debug: using noisy signal as noise_cov_est for estimating noise covariance.")
         signals['noise_cov_est'] = signals['noisy']
 
-        bfd_stft_inference = self.run_cov_estimation_beamforming(signals=signals, f0man=f0man,
-                                                                 f0_over_time=f0_over_time,
-                                                                 harmonic_freqs_est=harmonic_freqs_est, cfg=cfg,
-                                                                 dft_props=dft_props, SFT=SFT,
-                                                                 name_input_sig='noisy')
+        bfd_stft_inference = ExperimentManager.run_cov_estimation_beamforming(signals=signals, f0man=f0man,
+                                                                              f0_over_time=f0_over_time,
+                                                                              harmonic_freqs_est=harmonic_freqs_est, cfg=cfg,
+                                                                              dft_props=dft_props, SFT=SFT,
+                                                                              name_input_sig='noisy')
 
         signals_bfd_dict = ExperimentManager.convert_signals_time_domain(bfd_stft_inference, SFT_real)
 
