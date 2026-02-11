@@ -19,7 +19,7 @@ cmap = 'plasma'
 
 
 def save_wav(audio, file_name: Path, fs=16000):
-    # If filename already exists, append a number to the end of the filename (but before extension), starting from -1
+    # Append a number to the end of the filename (but before extension), starting from -1
     # and increasing until a filename is found that does not exist.
     idx = 0
     file_name_stem = file_name.stem
@@ -691,7 +691,7 @@ def smoothen_corners_last_axis(s, alpha=0.5, win_len=100):
 
     win_len = min(win_len, s.shape[-1] // 4)
     win = scipy.signal.windows.tukey(win_len, alpha=alpha)
-    s[:, :win_len // 2] = s[:, win_len // 2] * win[:win_len // 2]
+    s[:, :win_len // 2] = s[:, :win_len // 2] * win[:win_len // 2]
     s[:, -win_len // 2:] = s[:, -win_len // 2:] * win[-win_len // 2:]
     return s
 
