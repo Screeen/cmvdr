@@ -20,9 +20,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 import warnings
+import datetime
 
 from cmvdr.beamforming.cyclic_mvdr import CyclicMVDR
-from cmvdr.util.harmonic_info import HarmonicInfo
 from cmvdr.util import utils as u
 from cmvdr.util import plotter
 from cmvdr.util import globs as gs
@@ -157,26 +157,28 @@ def generate_signal_samples(rho, P, sigma_i_to_v_ratio=1.0, noise_power=1.0,
     tuple
         (noisy_samples, noise_samples) both of shape (P, num_samples)
     """
-    M = 1  # Single microphone
-    
+
     # Calculate interference power
-    interf_power = sigma_i_to_v_ratio * noise_power
+    interferer_power = sigma_i_to_v_ratio * noise_power
     
     # Generate target signal (white, uncorrelated across frequency shifts)
     # Target is only on the first element (frequency bin)
     target_signal = np.zeros((P, num_samples), dtype=np.complex128)
-    target_signal[0, :] = u.circular_gaussian((num_samples,)) * np.sqrt(target_power)
-    
+    target_signal[0, :] = u.circular_gaussian((num_samples,)) * np.sqrt(target_power / 2)
+
     # Generate interference signal (on second element)
     interference_signal = np.zeros((P, num_samples), dtype=np.complex128)
-    if P > 1:
-        interference_signal[1, :] = u.circular_gaussian((num_samples,)) * np.sqrt(interf_power)
+    if P == 2:
+        interference_signal[1, :] = u.circular_gaussian((num_samples,)) * np.sqrt(interferer_power / 2)
+    else:
+        raise NotImplementedError("Interference generation currently only implemented for P=2. Extend as needed.")
     
     # Generate correlated noise across all frequency shifts
     # Use the equicorrelated covariance structure
     cov_noise = generate_equicorrelated_covariance(rho, P, noise_power)
     noise_signal = generate_correlated_signal(cov_noise, (P, num_samples), cpx_data=True)
-    
+    noise_signal = noise_signal * np.sqrt(noise_power / 2)
+
     # Combine all components
     noisy_signal = target_signal + interference_signal + noise_signal
     
@@ -211,7 +213,7 @@ def estimate_covariance_batch(signal_samples):
     return cov_estimated
 
 
-def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, noise_power=1.0, num_samples=1000):
+def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, input_noise_power=1.0, num_samples=1000):
     """
     Compute empirical η using cMVDR beamformer on a single frequency bin.
     
@@ -236,7 +238,7 @@ def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, noise_power
         Number of cyclic shifts (virtual channels)
     sigma_i_to_v_ratio : float
         Ratio σ²ᵢ/σ²ᵥ (interference to noise power ratio)
-    noise_power : float
+    input_noise_power : float
         Noise power σ²ᵥ (noisePow in the paper)
     num_samples : int
         Number of samples to generate for covariance estimation (default: 1000)
@@ -255,7 +257,7 @@ def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, noise_power
     
     # Generate signal samples
     noisy_samples, total_noise_samples = generate_signal_samples(
-        rho, P, sigma_i_to_v_ratio, noise_power, target_power, num_samples
+        rho, P, sigma_i_to_v_ratio, input_noise_power, target_power, num_samples
     )
     
     # Estimate covariances from generated samples using batch strategy
@@ -301,10 +303,6 @@ def compute_empirical_eta_single_bin(rho, P, sigma_i_to_v_ratio=1.0, noise_power
         # Compute output noise power: w^H * Φ_n * w
         # Use the estimated noise covariance
         output_noise_power = np.real(np.conj(w_c) @ cov_noise_wb[0] @ w_c)
-        
-        # Input noise power (per component) 
-        interf_power = sigma_i_to_v_ratio * noise_power
-        input_noise_power = noise_power + interf_power
         
         # Residual noise factor: η = output_noise / input_noise
         eta = output_noise_power / input_noise_power
@@ -594,7 +592,8 @@ def main():
         print(f"      Simulation: η range [{eta_sim_dict[ratio].min():.4f}, {eta_sim_dict[ratio].max():.4f}]")
 
     # Create output directory
-    output_dir = Path(__file__).parent.parent / 'figs' / '2026-02-10'
+    today = datetime.date.today().isoformat()
+    output_dir = Path(__file__).parent.parent / 'figs' / f'{today}_eta_vs_correlation'
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate plots
