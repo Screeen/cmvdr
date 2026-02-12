@@ -1,10 +1,11 @@
 import numpy as np
 from pathlib import Path
 from datetime import datetime
-from . import utils as u
 import matplotlib
 from matplotlib.ticker import MaxNLocator
-from .plotter import get_display_name
+
+from cmvdr.util import utils as u
+from cmvdr.util.plotter import get_display_name
 
 
 class Player:
@@ -152,8 +153,7 @@ class Player:
         signals_dict_all_variations_time = res['signals_dict_all_variations_time']
         fs = 16000
         signals = signals_dict_all_variations_time[list(signals_dict_all_variations_time.keys())[0]][0]
-        sett = {'fs': fs, 'max_length_seconds': min(10, int(len(signals['noisy']) / fs)), 'volume': 0.3,
-                'smoothen_corners_flag': True}
+        sett = {'fs': fs, 'max_length_seconds': min(10, int(len(signals['noisy']) / fs)), 'volume': 0.3, 'smoothen_corners_flag': True}
 
         if 0:
             u.play(signals['wet'], **sett)
