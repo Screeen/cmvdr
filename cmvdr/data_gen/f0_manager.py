@@ -17,13 +17,6 @@ class F0ChangeAmount(Enum):
     small = 'small'  # within 1% of the previous value: same note/phoneme, just some modulation
     large = 'large'  # more than 1% of the previous value: different note/phoneme, we reset the estimate
 
-    # Define = (copy) operation such that it is always copied by value and not by reference
-    def __copy__(self):
-        return copy.deepcopy(self)
-
-    def __deepcopy__(self, memo):
-        return copy.deepcopy(self)
-
     def to_number(self):
         if self == F0ChangeAmount.no_change:
             return 0
@@ -78,6 +71,8 @@ class F0Manager:
 
         if inharmonicity_percentage == 0:
             return freqs
+
+        assert cls.inharmonicity_signs is not None, "Inharmonicity signs not initialized. Call get_inharmonicity_signs() first."
 
         signs = np.ones(len(freqs)) if all_same_sign else cls.inharmonicity_signs[:len(freqs)]
         if fixed_amount:
@@ -225,7 +220,8 @@ class F0Manager:
         freqs_hz_positive = abs(all_freqs_hz[:len(all_freqs_hz) // 2 + 1])
 
         for kk, kk_hz in enumerate(freqs_hz_positive):
-            harmonic_sets[kk] = np.argmin(np.abs(harmonics_hz - kk_hz))  # harmonic bin, assigned to set 0, ..., # signal harmonics-1
+            harmonic_sets[kk] = np.argmin(
+                np.abs(harmonics_hz - kk_hz))  # harmonic bin, assigned to set 0, ..., # signal harmonics-1
 
             harmonic_center_hz = harmonics_hz[harmonic_sets[kk]]
             bin_far_from_harmonic = np.abs(kk_hz - harmonic_center_hz) > max_distance_from_harmonic_hz
@@ -238,6 +234,7 @@ class F0Manager:
         # by exploiting symmetry around 0 Hz, ie symmetric around len(freqs_hz) // 2 + 1.
         # We will add the negative frequencies corresponding to the positive ones that were skipped.
         if use_negative_frequencies:
+            non_harmonic_bins = np.array(non_harmonic_bins)
             reflected_bins = len(all_freqs_hz) - non_harmonic_bins
             reflected_bins = reflected_bins[reflected_bins > len(freqs_hz_positive) - 1]
             non_harmonic_bins = np.unique(np.concatenate((non_harmonic_bins, reflected_bins)))
@@ -263,7 +260,7 @@ class F0Manager:
             cls.find_harmonic_bins(harmonic_frequencies_hz,
                                    freq_range_allowed=freq_range_cyclic,
                                    max_relative_dist_from_harmonic=max_rel_dist_from_harmonic,
-                                   all_freqs_hz=np.fft.fftfreq(nfft, 1./fs),
+                                   all_freqs_hz=np.fft.fftfreq(nfft, 1. / fs),
                                    ))
 
         # For non-pathologic cases (f0 > delta_f), np.allclose(harmonic_sets, harmonic_sets_2) is True
@@ -389,10 +386,11 @@ class F0Manager:
             mods_list = [alpha_smooth]
         else:  # upward and downward shifts
             mods_list = []
-            harmonics_arr = np.array([f0_mean*n for n in range(1, int(np.ceil(cfg_cyc['freq_range_cyclic'][1] / f0_mean)))])
+            harmonics_arr = np.array(
+                [f0_mean * n for n in range(1, int(np.ceil(cfg_cyc['freq_range_cyclic'][1] / f0_mean)))])
             for pp in range(1, harmonics_arr.size + 1):
                 mod_iter = []
-                for cc in range(1-pp, harmonics_arr.size - pp + 1):
+                for cc in range(1 - pp, harmonics_arr.size - pp + 1):
                     mod_iter.append(-cc * f0_mean)
                 mods_list.append(dcopy(np.asarray(mod_iter)))
 
@@ -405,7 +403,9 @@ class F0Manager:
             # Keep at most P_max elements in each array
             mods_list = [x[:cfg_cyc['P_max']] for x in mods_list]
 
-        assert [alpha_vec[0] == 0 for alpha_vec in mods_list], \
+        assert all(len(alpha_vec) > 0 for alpha_vec in mods_list), \
+            "Each modulation vector must have at least one element. "
+        assert all(alpha_vec[0] == 0 for alpha_vec in mods_list), \
             "First element of mod vector must be 0. Otherwise problems copying multiband to narrowband covariances. "
 
         return mod_amount, mods_list
@@ -434,9 +434,10 @@ class F0Manager:
 
         diff_matrix = x[:, None] - x[None, :]
         if negative_shifts_only:
-            raise ValueError("Better to use f0_both_dir as this one is a mix between using all harmonics and using only positive shifts ")
-            warnings.warn("Warning! Using negative shifts only, this will make performance worse.")
-            diff_matrix[diff_matrix > 0] = np.inf
+            raise ValueError(
+                "Better to use f0_both_dir as this one is a mix between using all harmonics and using only positive shifts ")
+            # warnings.warn("Warning! Using negative shifts only, this will make performance worse.")
+            # diff_matrix[diff_matrix > 0] = np.inf
 
         # Sort each row (axis=1) based on absolute values. If two elements have same absolute value, put the positive shift first/
         # Negative values correspond to downshifts, while positive values correspond to upshifts.
@@ -571,6 +572,10 @@ class F0Manager:
 
             freq_range_cyclic = cfg_cyclic['freq_range_cyclic']
             valid_freqs = (freq_range_cyclic[0] <= harmonic_freqs_est) & (harmonic_freqs_est <= freq_range_cyclic[1])
+            valid_freqs = np.asarray(valid_freqs)
+            if not valid_freqs.any():
+                raise ValueError(f"No estimated harmonic frequencies fall within the allowed cyclic frequency range "
+                                 f"{freq_range_cyclic = }. Please check your estimation and configuration.")
 
             # Compute modulation sets based on differences between estimated harmonic frequencies
             alpha_mods_sets = self.compute_pairwise_differences_between_freqs(harmonic_freqs_est[valid_freqs],
@@ -587,7 +592,8 @@ class F0Manager:
 
         return mod_amount, alpha_mods_sets
 
-    def compute_harmonic_and_modulation_sets_distance_based(self, harmonic_freqs_est, cfg_harmonics_est, cfg_cyclic, dft_props,
+    def compute_harmonic_and_modulation_sets_distance_based(self, harmonic_freqs_est, cfg_harmonics_est, cfg_cyclic,
+                                                            dft_props,
                                                             idx_chunk, f0_over_time_slice_bf, f0_tracker):
         """ Compute harmonic and modulation sets based on the estimated harmonic frequencies."""
 
@@ -627,7 +633,8 @@ class F0Manager:
         return harmonic_freqs_est
 
     @classmethod
-    def compute_harmonic_and_modulation_sets_global_coherence(cls, sig, harmonic_freqs_est, SFT, cfg_cyc) -> (hi.HarmonicInfo, F0ChangeAmount):
+    def compute_harmonic_and_modulation_sets_global_coherence(cls, sig, harmonic_freqs_est, SFT, cfg_cyc) -> (
+            hi.HarmonicInfo, F0ChangeAmount):
         """ Compute harmonic and modulation sets based on the estimated harmonic frequencies using global coherence."""
 
         # Input frequencies for global coherence: all pairwise difference and harmonic themselves

@@ -121,7 +121,7 @@ def assign_color_and_marker_to_algorithm(algo_lower, algo_index=0):
             marker = '*'
         elif get_variant_display_name('semi-oracle') in algo_lower:
             color = 'tab:blue'
-            marker = '+'
+            marker = '*'
     else:
         # Use same colour for same variant, e.g. for MWF [blind] and cMWF [blind]
         if 'cmwf' in algo_lower:
@@ -739,6 +739,8 @@ def get_parameter_display_name(parameter_to_vary, use_tex=False):
         return "Harmonic freq. est. FFT size"
     elif parameter_to_vary == 'stft|nfft':
         return "FFT size"
+    elif parameter_to_vary == 'mod_error_perc':
+        return 'Frequency est. error [\\%]'
     else:
         print(f"Light warning: parameter {parameter_to_vary} not found in get_parameter_display_name")
         return parameter_to_vary

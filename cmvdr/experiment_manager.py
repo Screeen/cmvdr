@@ -9,7 +9,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 from cmvdr.data_gen.data_generator import DataGenerator
-from cmvdr.data_gen.f0_manager import F0ChangeAmount
+from cmvdr.data_gen.f0_manager import F0ChangeAmount, F0Manager
 from cmvdr.data_gen import data_generator, f0_manager, manager, audio_disk_loader as audio_loader
 from cmvdr.estimation import covariance_estimator
 from cmvdr.eval import evaluator
@@ -321,6 +321,12 @@ class ExperimentManager:
                     harmonic_freqs_est, crb_dict, f0_over_time = f0man.estimate_f0_or_resonant_freqs(
                         signals, cfg, dft_props, sin_generators=dg.sin_gen,
                         do_plots=do_plots and cfg['plot']['f0_spectrogram'])
+
+                    # Inject artificial frequency estimation errors for sensitivity analysis
+                    if cfg.get('mod_error_perc', 0) > 0:
+                        F0Manager.get_inharmonicity_signs()
+                        harmonic_freqs_est = F0Manager.shift_frequencies_by_percentage(harmonic_freqs_est,
+                                                                                       cfg['mod_error_perc'] / 100)
 
                     # Covariance estimation & beamforming
                     bfd_all_chunks_stft = ExperimentManager.run_cov_estimation_beamforming(
