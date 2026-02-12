@@ -15,7 +15,7 @@ class CovarianceEstimator:
         self.ch_cache = None
         self.sig_shape_k_m_p = (-1, -1, -1)  # number of frequencies, number of microphones, number of modulations
 
-        self.use_rank1_model_for_oracle_cov_wet_es = cfg_cov_est['use_rank1_model_for_oracle_cov_wet_estimation']
+        self.use_rank1_model_for_oracle_cov_wet_est = cfg_cov_est['use_rank1_model_for_oracle_cov_wet_estimation']
         self.recursive_average = cfg_cov_est['recursive_average']
         self.forgetting_factor = cfg_cov_est['cov_est_forgetting_factor']
         self.cyclostationary_target = cyclostationary_target
@@ -25,12 +25,15 @@ class CovarianceEstimator:
 
         self.use_pseudo_cov = use_pseudo_cov  # pseudo covariance is needed for widely linear beamforming
 
-        if self.subtract_mean and self.cyclostationary_target:
+        if self.subtract_mean and not self.cyclostationary_target:
             warnings.warn("Mean subtraction only implemented for NOISY cov for cMVDR!")
 
         if self.use_pseudo_cov and self.cyclostationary_target:
             raise NotImplementedError(
                 "Pseudo-covariance (widely linear estimator) only implemented for NOISY cov for cMVDR!")
+
+        if g.mic0_idx != 0:
+            raise NotImplementedError("Mic0_idx other than 0 not supported yet. ")
 
     def estimate_covariances(self, slice_frames, signals_dict, cov_dict_prev: dict,
                              num_mics_changed: bool, modulation_amount: str, name_input_sig='noisy'):
@@ -71,10 +74,6 @@ class CovarianceEstimator:
 
         # return CovarianceHolder(**cov_dict)
         return cov_dict
-
-    @staticmethod
-    def is_num_modulations_increased(ch_previous: CovarianceHolder, num_modulations: int):
-        return ch_previous.noisy_wb.shape[-1] // ch_previous.noisy_nb.shape[-1] <= num_modulations
 
     @staticmethod
     def get_spectral_cov_from_spectral_spatial_cov(cov_spectral_spatial, num_mics):
@@ -176,7 +175,7 @@ class CovarianceEstimator:
         return cov_dict
 
     @staticmethod
-    def initialize_covariance_matrices(cov_dict, scaling=None, name_input_sig='noisy'):
+    def initialize_covariance_matrices(cov_dict, scaling=1., name_input_sig='noisy'):
 
         input_wb = name_input_sig + '_wb'
         MP = cov_dict[input_wb].shape[-1]
@@ -223,6 +222,10 @@ class CovarianceEstimator:
                 f"Number of microphones {M} and modulations {P} changed. why was the matrix not reallocated?."
                 f"Old shape: {noisy_wb_dict.shape}, new shape: {K_nfft, M * P, M * P}")
 
+        # restrict recursive updates to a single frame per update.
+        if slice_frames.stop - slice_frames.start > 1:
+            raise ValueError("Rank-1 update only implemented for single frame updates. Please set slice_frames to a single frame.")
+
         harm_cache = [self.harmonic_info.get_harmonic_set_and_num_shifts(kk) for kk in range(K_nfft)]
 
         # Update received signal covariance matrix
@@ -243,7 +246,7 @@ class CovarianceEstimator:
             return cov_dict
 
         for kk in range(K_nfft):
-            harmonic_set_idx, P = self.harmonic_info.get_harmonic_set_and_num_shifts(kk)
+            harmonic_set_idx, P = harm_cache[kk]
             sel = harmonic_set_idx, slice(M * P), kk, slice_frames
             sel_cov = kk, slice(M * P), slice(M * P)  # corresponds to [kk, :M*P, :M*P]
 
@@ -310,7 +313,7 @@ class CovarianceEstimator:
                     mean = np.mean(noisy_[mod_stft][sel], axis=1)
                     cov_dict[input_wb][sel_cov] = (
                             ((noisy_[mod_stft][sel] - mean[:, np.newaxis]) @
-                             (noisy_[mod_stft_conj][sel] - np.conj(mean[:, np.newaxis])).T) / (L2_frames_chunk - 1))
+                             (noisy_[mod_stft_conj][sel] - np.conj(mean[:, np.newaxis])).T) / L2_frames_chunk)
                 else:
                     cov_dict[input_wb][sel_cov] = (
                             (noisy_[mod_stft][sel] @ noisy_[mod_stft_conj][sel].T) / L2_frames_chunk)
@@ -333,7 +336,7 @@ class CovarianceEstimator:
                         (noisy_['stft'][sel_nb] @ noisy_['stft_conj'][sel_nb].T) / L2_frames_chunk)
 
             if mod_stft in wet_rank1.keys():
-                if self.use_rank1_model_for_oracle_cov_wet_es:
+                if self.use_rank1_model_for_oracle_cov_wet_est:
                     cov_dict['wet_wb'][sel_cov] = (
                             (wet_rank1[mod_stft][sel] @ wet_rank1[mod_stft_conj][sel].T) / L2_frames_chunk)
                 else:
@@ -411,7 +414,7 @@ class CovarianceEstimator:
 
     @staticmethod
     def copy_multiband_to_narrowband(cov_dict, M, name_input_sig='noisy'):
-        # Infer narrowband (spatial) covariance matrices from wideband (cylic) covariance matrices
+        # Infer narrowband (spatial) covariance matrices from wideband (cyclic) covariance matrices
 
         def is_present(cov_name):
             return cov_name in cov_dict.keys() and cov_dict[cov_name].size > 0
