@@ -323,10 +323,10 @@ class ExperimentManager:
                         do_plots=do_plots and cfg['plot']['f0_spectrogram'])
 
                     # Inject artificial frequency estimation errors for sensitivity analysis
-                    if cfg.get('mod_error_perc', 0) > 0 and harmonic_freqs_est.size > 0:
-                        harmonic_freqs_est = F0Manager.shift_frequencies_by_percentage(
-                            harmonic_freqs_est, cfg['mod_error_perc'] / 100, 
-                            all_same_sign=False, fixed_amount=False)
+                    if cfg.get('mod_error_perc', 0) > 0:
+                        F0Manager.get_inharmonicity_signs()
+                        harmonic_freqs_est = F0Manager.shift_frequencies_by_percentage(harmonic_freqs_est,
+                                                                                       cfg['mod_error_perc'] / 100)
 
                     # Covariance estimation & beamforming
                     bfd_all_chunks_stft = ExperimentManager.run_cov_estimation_beamforming(
