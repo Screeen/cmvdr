@@ -5,15 +5,12 @@
 
 base: experiments/default.yaml
 varying_parameters_names: [mod_error_perc]
-metrics:
-  time: [ 'sisdr' ]
-
-# Set inharmonicity to 0 to isolate modulation errors from generation errors
-noise:
-  inharmonicity_percentage: 0
-
+cov_estimation:
+  cov_est_forgetting_factor: 0.005 # Higher forgetting factor: more weight to the NEW covariance matrices.
 harmonics_est:
   max_num_harmonics_peaks: 16
-
-cov_estimation:
-  cov_est_forgetting_factor: 0.005 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
+  algo: oracle_all_harmonics # choices are oracle_all_harmonics, periodogram_all_harmonics, oracle_f0, nls_f0, nls_bayesian_f0
+varying_params_values:
+  mod_error_perc: [0, 0.01, 0.1, 1, 10.]  # Artificial frequency estimation errors (percentage) for sensitivity analysis
+metrics:
+  time: [ 'sisdr' ]
