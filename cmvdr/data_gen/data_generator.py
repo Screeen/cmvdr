@@ -4,6 +4,7 @@ import warnings
 import librosa
 import numpy as np
 import scipy
+import soundfile
 from pathlib import Path
 
 from .manager import Manager
@@ -230,7 +231,14 @@ class DataGenerator:
         if sig_type != 'sample':
             noise_params_copy['sample_path'] = None
         else:
-            noise_params_copy['sample_path'] = self.get_sample_path(noise_params_copy['sample_name'])
+            # Pass the required durations to filter out files that are too short
+            min_duration_samples = max(reverberant_mix.shape[-1], noise_cov_est_len)
+            fs = noise_params['fs']
+            noise_params_copy['sample_path'] = self.get_sample_path(
+                noise_params_copy['sample_name'],
+                min_duration_samples=min_duration_samples,
+                fs=fs
+            )
             print(f"File loaded: {noise_params_copy['sample_path']}")
 
         # Remove this parameters so that "generate_self_and_dir_noises" doesn't throw TypeError
@@ -311,8 +319,17 @@ class DataGenerator:
 
         return noisy, noise, noise_cov_est
 
-    def get_sample_path(self, target_file_name=None):
-        """ Get the path to the target sample file. """
+    def get_sample_path(self, target_file_name=None, min_duration_samples=None, fs=None):
+        """ Get the path to the target sample file.
+
+        Args:
+            target_file_name: Name or path of the target file
+            min_duration_samples: Minimum required duration in samples. If provided, files shorter than this will be skipped.
+            fs: Sampling frequency in Hz. Required if min_duration_samples is specified.
+
+        Returns:
+            Path to the selected audio file
+        """
 
         datasets_path = self.datasets_path / 'audio'
 
@@ -339,6 +356,31 @@ class DataGenerator:
                         if any([f'{n}.' in str(p) for n in not_allowed]):
                             possible_paths_filtered.remove(p)
                     possible_paths = possible_paths_filtered
+
+                # Filter out files that are too short if min_duration_samples is specified
+                if min_duration_samples is not None and fs is not None:
+                    valid_paths = []
+                    for path in possible_paths:
+                        try:
+                            # Get duration without loading the entire file
+                            info = soundfile.info(path)
+                            if info.frames >= min_duration_samples:
+                                valid_paths.append(path)
+                            else:
+                                warnings.warn(
+                                    f"Skipping {path.name}: too short ({info.frames} samples, "
+                                    f"{info.frames/fs:.2f}s) but {min_duration_samples} samples "
+                                    f"({min_duration_samples/fs:.2f}s) are required."
+                                )
+                        except Exception as e:
+                            warnings.warn(f"Could not check duration of {path}: {e}. Skipping.")
+
+                    if not valid_paths:
+                        raise ValueError(
+                            f"No valid noise files found with minimum duration of {min_duration_samples} samples "
+                            f"({min_duration_samples/fs:.2f}s) in {target_path}."
+                        )
+                    possible_paths = valid_paths
 
                 return gs.rng.choice(possible_paths)
 
