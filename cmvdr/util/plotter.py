@@ -239,7 +239,13 @@ def _get_default_locators(ax, lin_thresh, num_x_ticks: int, x_values) -> tuple[t
     """ Get default locators for x and y axes. """
 
     if ax.get_xscale() == 'log':
-        x_locator = tck.SymmetricalLogLocator(base=10, linthresh=lin_thresh)
+        # Check if data includes both positive and negative values
+        has_negative = np.any(np.array(x_values) < 0)
+        if has_negative:
+            x_locator = tck.SymmetricalLogLocator(base=10, linthresh=lin_thresh)
+        else:
+            # For positive log-distributed data (e.g., 1, 2, 4, 8, 16), use standard LogLocator
+            x_locator = tck.LogLocator(base=10, numticks=num_x_ticks)
         y_minor_locator = tck.AutoMinorLocator(4)
     else:
         if num_x_ticks < 8:  # only a few x-ticks, so show all of them
