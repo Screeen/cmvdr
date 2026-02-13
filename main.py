@@ -35,4 +35,4 @@ if __name__ == '__main__':
     if elapsed_time > 60 or res['cfg_original']['num_montecarlo_simulations'] > 10:
         # Use 'open' command for macOS or 'xdg-open' for Linux
         # To detach, we use stdout and stderr redirection to DEVNULL
-        subprocess.Popen(["open", res['target_path_figs']], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(["open", res['exp_root_path']], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

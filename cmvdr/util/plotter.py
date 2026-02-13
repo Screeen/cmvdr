@@ -517,12 +517,6 @@ def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, pr
         for fig_ in figs:
             fig_.show()
 
-    if plot_sett_['destination'] != 'debug' and plot_sett_['destination'] != 'none' and plot_sett_['save_plots']:
-        # Save cfg as a yaml file to plot_sett_['target_folder_path']
-        # To save the configuration file (dict) as a yaml file, we do:
-        Path(plot_sett_['target_folder_path']).mkdir(parents=True, exist_ok=True)
-        path_config_yaml_ = plot_sett_['target_folder_path'] / 'config.yaml'
-        config.write_configuration(cfg, path_config_yaml_)
 
     return figs
 
