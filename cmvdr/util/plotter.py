@@ -44,28 +44,55 @@ def is_tex_plotting_available(force_no_tex=False):
 
 
 def check_if_log_scale(arr):
+    """
+    Check if the array approximately follows a log scale.
+
+    Returns:
+        tuple: (is_log_scale: bool, log_base: float or None)
+               If is_log_scale is True, log_base contains the detected base (e.g., 2, 10).
+               If is_log_scale is False, log_base is None.
+    """
     try:
-        # Check if the array approximately follows a log scale, e.g. 1, 10, 100, 1000, ...
+        # Check if the array approximately follows a log scale, e.g. 1, 10, 100, 1000, ... or 2, 4, 8, 16, ...
         # if arr.size < 2 or np.any(arr <= 0):
         if arr.size < 2:
-            return False
+            return False, None
 
         # Instead of checking each element, compute all ratios and check their mean
         ratios = []
         for idx, _ in enumerate(arr[:-1]):
             if np.abs(arr[idx]) > 1e-12:
-                ratios.append(arr[idx + 1] / (1e-15 + arr[idx]))
+                ratios.append(arr[idx + 1] / np.maximum(1.e-15, arr[idx]))
         ratios = np.array(ratios)
 
         looks_like_log_distribution = True
-        if np.mean(ratios) < 1.8:
+        log_base = None
+        mean_ratio = np.mean(ratios)
+
+        if mean_ratio < 1.8:
             looks_like_log_distribution = False
+        else:
+            # Detect the base: if ratios are consistent, they represent the base
+            # For example: [1, 2, 4, 8] has ratios [2, 2, 2] -> base 2
+            # For example: [1, 10, 100, 1000] has ratios [10, 10, 10] -> base 10
+            std_ratio = np.std(ratios)
+            if std_ratio < mean_ratio * 0.3:  # ratios are relatively consistent
+                log_base = mean_ratio
+            else:
+                # Try common bases
+                for base in [2, 10, np.e]:
+                    if np.abs(mean_ratio - base) < base * 0.3:
+                        log_base = base
+                        break
+                if log_base is None:
+                    log_base = mean_ratio  # fallback to mean ratio
 
     except Exception as e:
         print(f"Exception in check_if_log_scale: {e}")
         looks_like_log_distribution = False
+        log_base = None
 
-    return looks_like_log_distribution
+    return looks_like_log_distribution, log_base
 
 
 def decapitalize(s):
@@ -194,11 +221,13 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
                 linewidth=line_width, c=color)
 
     # If varying_param_values have a log scale (e.g., f0_err_percent: 0, 1e-4, 1e-2, 1e-1, ...) then use log scale
-    use_log_scale = check_if_log_scale(np.array(x_values))
+    use_log_scale, log_base = check_if_log_scale(np.array(x_values))
     lin_thresh = x_values[1] - x_values[0] if len(x_values) > 1 else 1
-    # lin_thresh = np.median(np.diff(x_values))  # Use median spacing to balance uniformity
     if use_log_scale:
-        ax.set_xscale('symlog', linthresh=lin_thresh)
+        if x_values[0] < 0 and x_values[-1] > 0:  # if data includes both positive and negative values, use symlog
+            ax.set_xscale('symlog', linthresh=lin_thresh)
+        else:
+            ax.set_xscale('log', base=log_base)
 
     if show_legend:
         handles, labels = ax.get_legend_handles_labels()
@@ -210,7 +239,7 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
     ax.set_ylabel(metric_display_name, fontsize=font_size, labelpad=2)
 
     if locator_factory is None:
-        x_locator, y_minor_locator = _get_default_locators(ax, lin_thresh, num_x_ticks, x_values)
+        x_locator, y_minor_locator = _get_default_locators(ax, lin_thresh, num_x_ticks, x_values, log_base)
     else:
         x_locator, y_minor_locator = locator_factory(ax, lin_thresh, num_x_ticks, x_values)
 
@@ -235,25 +264,27 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
     return ax
 
 
-def _get_default_locators(ax, lin_thresh, num_x_ticks: int, x_values) -> tuple[tck.FixedLocator, tck.AutoMinorLocator]:
+def _get_default_locators(ax, lin_thresh, num_x_ticks: int, x_values, log_base=None) -> tuple[tck.FixedLocator, tck.AutoMinorLocator]:
     """ Get default locators for x and y axes. """
 
-    if ax.get_xscale() == 'log':
+    if ax.get_xscale() == 'log' or ax.get_xscale() == 'symlog':
+
         # Check if data includes both positive and negative values
         has_negative = np.any(np.array(x_values) < 0)
         if has_negative:
             x_locator = tck.SymmetricalLogLocator(base=10, linthresh=lin_thresh)
         else:
             # For positive log-distributed data (e.g., 1, 2, 4, 8, 16), use standard LogLocator
-            x_locator = tck.LogLocator(base=10, numticks=num_x_ticks)
-        y_minor_locator = tck.AutoMinorLocator(4)
+            # Use the detected base if available, otherwise default to 10
+            base = log_base if log_base is not None else 10
+            x_locator = tck.LogLocator(base=base, numticks=num_x_ticks)
     else:
         if num_x_ticks < 8:  # only a few x-ticks, so show all of them
             x_locator = tck.FixedLocator(x_values)
-            y_minor_locator = tck.AutoMinorLocator(2)
         else:
             x_locator = tck.MaxNLocator(num_x_ticks - 1, min_n_ticks=4)
-            y_minor_locator = tck.AutoMinorLocator(2)
+
+    y_minor_locator = tck.AutoMinorLocator(2)
     return x_locator, y_minor_locator
 
 
@@ -539,6 +570,8 @@ def get_display_name_beamformer(first_name_internal):
     postfix_str = ''
     if first_name_internal == 'mvdr':
         first_name_display = 'MVDR'
+    elif first_name_internal == 'mpdr':
+        first_name_display = 'MPDR'
     elif first_name_internal == 'mwf':
         first_name_display = 'MWF'
     elif first_name_internal == 'cmwf':
@@ -547,8 +580,14 @@ def get_display_name_beamformer(first_name_internal):
     elif first_name_internal == 'cmvdr':
         first_name_display = 'cMVDR'
         postfix_str = '(prop.)'
+    elif first_name_internal == 'cmpdr':
+        first_name_display = 'cMPDR'
+        postfix_str = '(prop.)'
     elif first_name_internal == 'cmvdr-wl':
         first_name_display = 'cMVDR-WL'
+        postfix_str = '(prop.)'
+    elif first_name_internal == 'cmpdr-wl':
+        first_name_display = 'cMPDR-WL'
         postfix_str = '(prop.)'
     elif first_name_internal == 'clcmv':
         first_name_display = 'cLCMV'
