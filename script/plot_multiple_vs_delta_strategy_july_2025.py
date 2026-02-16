@@ -19,8 +19,9 @@ fig_times_path = times_path / "figs_pkl" / "DeltaSI-SDR_dB_vs_Noise_inharmonicit
 fig_delta_path = Path(fig_delta_path).expanduser().resolve()
 fig_times_path = Path(fig_times_path).expanduser().resolve()
 
-cmvdr_delta_label = r"cMVDR ($\Delta$ strategy)"
-cmvdr_times_label = r"cMVDR ($\times$ strategy)"
+cmvdr_delta_label = r"cMPDR ($\Delta$ strategy)"
+cmvdr_times_label = r"cMPDR ($\times$ strategy)"
+mvdr_label = "MPDR"
 
 title_font_size = 9
 font_size = 7
@@ -33,12 +34,12 @@ with open(fig_delta_path, 'rb') as f:
 with open(fig_times_path, 'rb') as f:
     fig_times = pickle.load(f)
 
-# fig_delta: has two lines. leave "MVDR" untouched, and rename the other line to "cMVDR (Delta)"
-# fig_times: has two lines. remove "MVDR" and rename the other line to "cMVDR (Times)"
+# fig_delta: has two lines. leave "MVDR" untouched, and rename the other line to "cMPDR (Delta)"
+# fig_times: has two lines. remove "MVDR" and rename the other line to "cMPDR (Times)"
 # Rename lines in fig_delta
 for line in fig_delta.axes[0].get_lines():
     if line.get_label() == "MVDR":
-        continue  # Leave MVDR untouched
+        line.set_label(mvdr_label)
     elif line.get_label() == "cMVDR (prop.)":
         line.set_label(cmvdr_delta_label)  # Rename cMVDR (prop.) to cMVDR (Delta)
     else:
@@ -159,8 +160,8 @@ new_ax.set_xlim(ref_ax.get_xlim())
 new_ax.set_ylim(ref_ax.get_ylim())
 
 # Match legend font size and placement
-# new_fig.legend(fontsize=legend_font_size, handletextpad=0.4, borderaxespad=0.3, ncols=1,
-#                columnspacing=1.2, loc='outside right')
+new_fig.legend(fontsize=legend_font_size, handletextpad=0.4, borderaxespad=0.3, ncols=3,
+               columnspacing=1.2, loc='outside upper center')
 
 # Match axis label font sizes
 new_ax.set_xlabel(ref_ax.get_xlabel(), fontsize=font_size, labelpad=2)
@@ -175,6 +176,7 @@ new_fig.show()
 # Save the new figure
 output_path = delta_path / "DeltaSI-SDR_dB_vs_Noise_inharmonicity_percent_00_combined_legend.pdf"
 output_path = Path(output_path).expanduser().resolve()
+u.savefig(figure=new_fig, file_name=output_path)
 # new_fig.savefig(output_path, format='pdf',
 #                 dpi=fig_delta.dpi, bbox_inches='tight', pad_inches=0.1)
 print(f"Combined figure saved to: {output_path}")
