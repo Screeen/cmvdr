@@ -1,7 +1,7 @@
 import copy
 import warnings
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 import librosa
 import numpy as np
@@ -220,15 +220,6 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
                 markeredgecolor=color, markerfacecolor='none', markeredgewidth=0.5,
                 linewidth=line_width, c=color)
 
-    # If varying_param_values have a log scale (e.g., f0_err_percent: 0, 1e-4, 1e-2, 1e-1, ...) then use log scale
-    use_log_scale, log_base = check_if_log_scale(np.array(x_values))
-    lin_thresh = x_values[1] - x_values[0] if len(x_values) > 1 else 1
-    if use_log_scale:
-        if x_values[0] < 0 and x_values[-1] > 0:  # if data includes both positive and negative values, use symlog
-            ax.set_xscale('symlog', linthresh=lin_thresh)
-        else:
-            ax.set_xscale('log', base=log_base)
-
     if show_legend:
         handles, labels = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
@@ -238,6 +229,7 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
     ax.set_xlabel(f'{name_varying_param}', fontsize=font_size, labelpad=2)
     ax.set_ylabel(metric_display_name, fontsize=font_size, labelpad=2)
 
+    lin_thresh, log_base = maybe_set_log_or_symlog_scale(ax, x_values, name_varying_param)
     if locator_factory is None:
         x_locator, y_minor_locator = _get_default_locators(ax, lin_thresh, num_x_ticks, x_values, log_base)
     else:
@@ -262,6 +254,24 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
         ax.set_title(title, fontsize=title_font_size)
 
     return ax
+
+
+def maybe_set_log_or_symlog_scale(ax, x_values, name_varying_param=''):
+    """ Set log or symlog scale for the x-axis if the varying parameter values follow a log distribution
+    (e.g., 1, 10, 100, 1000, ... or 2, 4, 8, 16, ...). """
+
+    if 'rt60' in name_varying_param.lower():
+        return 1, False
+
+    # If varying_param_values have a log scale (e.g., f0_err_percent: 0, 1e-4, 1e-2, 1e-1, ...) then use log scale
+    use_log_scale, log_base = check_if_log_scale(np.array(x_values))
+    lin_thresh = x_values[1] - x_values[0] if len(x_values) > 1 else 1
+    if use_log_scale:
+        if x_values[0] < 0 and x_values[-1] > 0:  # if data includes both positive and negative values, use symlog
+            ax.set_xscale('symlog', linthresh=lin_thresh)
+        else:
+            ax.set_xscale('log', base=log_base)
+    return lin_thresh, log_base
 
 
 def _get_default_locators(ax, lin_thresh, num_x_ticks: int, x_values, log_base=None) -> tuple[tck.FixedLocator, tck.AutoMinorLocator]:
