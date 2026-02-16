@@ -25,6 +25,8 @@ if __name__ == '__main__':
     gs.rng, cfg_original['seed_extracted'] = gs.compute_rng(cfg_original['seed_is_random'],
                                                             cfg_original['seed_if_not_random'])
 
+    cfg_original['config_name'] = str(args.config)
+
     start_time = time.time()
     print(f"Start time: {time.strftime('%H:%M:%S')}")
     res = ExperimentManager.run_experiment(cfg_original)
