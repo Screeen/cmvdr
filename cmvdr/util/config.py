@@ -394,6 +394,8 @@ def assign_default_values(cfg):
     cfg['cov_estimation'] = cfg.get('cov_estimation', {})
     cfg['cov_estimation']['use_rank1_model_for_oracle_cov_wet_estimation'] = cfg['cov_estimation'].get('use_rank1_model_for_oracle_cov_wet_estimation', True)
 
+    cfg['config_name'] = cfg.get('config_name', 'default_config')
+
     return cfg
 
 

@@ -389,7 +389,9 @@ class ExperimentManager:
 
         # Path of this module - restructured to exp_results/{date}/{time}/
         module_path = Path(__file__).parent.parent
-        exp_root_path = module_path / Path('exp_results') / datetime.now().strftime("%Y-%m-%d") / time.strftime('%Hh%M')
+        exp_root_path = module_path / Path('exp_results') / datetime.now().strftime("%Y-%m-%d")
+        exp_root_name = time.strftime('%Hh%M') + '_' + Path(cfg_original['config_name']).stem
+        exp_root_path = exp_root_path / exp_root_name
         target_path_figs = exp_root_path / 'figs'
         target_path_data = exp_root_path / 'data'
 
