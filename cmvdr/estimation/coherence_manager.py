@@ -316,7 +316,7 @@ class CoherenceManager:
                 harmonic_bins_.append(kk)
                 modulation_sets_.append(alpha_vec_hz[final_selected_by_freq])
 
-                if 0 not in alpha_vec_hz[final_selected]:
+                if 0 not in alpha_vec_hz[final_selected_by_freq]:
                     warnings.warn("0 should always be selected: non-modulated freq is perfectly coherent.")
 
         harmonic_bins_ = np.asfortranarray(harmonic_bins_)

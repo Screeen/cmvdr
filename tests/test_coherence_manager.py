@@ -74,5 +74,79 @@ class TestCoherenceEquivalence(unittest.TestCase):
         self.check_equivalence(mod, mod_c, psds, alpha, cc0, delta_f, fs)
 
 
+class TestCalculateHarmonicInfo(unittest.TestCase):
+    """Tests for calculate_harmonic_info_from_coherence function."""
+
+    def test_zero_always_selected(self):
+        """Test that zero modulation is always included in final selection."""
+        # Create a simple coherence matrix where alpha=0 has high coherence
+        alpha_vec_hz = np.array([0, -100, -200, -300, -400])
+        P_sum = len(alpha_vec_hz)
+        kk_max = 10
+        
+        # Create coherence matrix with varying values
+        # Make sure alpha=0 (index 0) has high coherence
+        rho = np.zeros((P_sum, kk_max))
+        rho[0, :] = 0.95  # alpha=0 has high coherence
+        rho[1, 5] = 0.85  # Some other modulations have high coherence at specific bins
+        rho[2, 5] = 0.75
+        rho[3, 5] = 0.65
+        
+        thr = 0.6
+        P_max_cfg = 3
+        nfft_real = kk_max
+        
+        # This should not raise a warning
+        import warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            harm_info = CoherenceManager.calculate_harmonic_info_from_coherence(
+                alpha_vec_hz, rho, thr, P_max_cfg, nfft_real
+            )
+            
+            # Check that no warning was raised about missing zero
+            warning_messages = [str(warning.message) for warning in w]
+            zero_warnings = [msg for msg in warning_messages if "0 should always be selected" in msg]
+            self.assertEqual(len(zero_warnings), 0, 
+                           f"Should not warn about missing zero when it's properly selected. Warnings: {zero_warnings}")
+        
+        # Verify that zero is in the modulation sets
+        for mod_set in harm_info.alpha_mods_sets:
+            self.assertIn(0, mod_set, "Zero should be in all modulation sets")
+
+    def test_warning_when_zero_missing(self):
+        """Test that warning is raised when zero is not in high coherence indices."""
+        # Create a scenario where alpha=0 doesn't have high enough coherence
+        alpha_vec_hz = np.array([0, -100, -200, -300, -400])
+        P_sum = len(alpha_vec_hz)
+        kk_max = 10
+        
+        # Create coherence matrix where alpha=0 has LOW coherence
+        rho = np.zeros((P_sum, kk_max))
+        rho[0, :] = 0.3   # alpha=0 has LOW coherence (below threshold)
+        rho[1, 5] = 0.95  # Other modulations have HIGH coherence
+        rho[2, 5] = 0.85
+        rho[3, 5] = 0.75
+        rho[4, 5] = 0.65
+        
+        thr = 0.6  # Threshold above alpha=0's coherence
+        P_max_cfg = 3
+        nfft_real = kk_max
+        
+        # This SHOULD raise a warning since alpha=0 won't be selected
+        import warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            harm_info = CoherenceManager.calculate_harmonic_info_from_coherence(
+                alpha_vec_hz, rho, thr, P_max_cfg, nfft_real
+            )
+            
+            # Check that warning WAS raised about missing zero
+            warning_messages = [str(warning.message) for warning in w]
+            zero_warnings = [msg for msg in warning_messages if "0 should always be selected" in msg]
+            self.assertGreater(len(zero_warnings), 0, 
+                             "Should warn when zero is not selected due to low coherence")
+
+
 if __name__ == '__main__':
     unittest.main()
