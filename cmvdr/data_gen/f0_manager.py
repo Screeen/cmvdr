@@ -648,8 +648,8 @@ class F0Manager:
                                   max_freq_cyclic_hz=cfg_cyc['freq_range_cyclic'][1])
 
         max_bin = -1
-        if harmonic_freqs_est.size > 0:
-            max_bin = int(np.ceil((3 * SFT.delta_f + np.max(np.abs(harmonic_freqs_est))) / SFT.delta_f))
+        # if harmonic_freqs_est.size > 0:
+        #     max_bin = int(np.ceil((3 * SFT.delta_f + np.max(np.abs(harmonic_freqs_est))) / SFT.delta_f))
         
         # Choose coherence computation method based on config
         use_freq_domain = cfg_cyc.get('use_freq_domain_coherence', False)
