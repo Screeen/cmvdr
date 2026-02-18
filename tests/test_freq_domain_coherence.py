@@ -45,8 +45,13 @@ class TestFrequencyDomainCoherence(unittest.TestCase):
         self.assertEqual(rho.shape[0], P_sum)
         self.assertTrue(rho.shape[1] > 0)
         
-        # Check that rho[0] (no shift) has high coherence with itself
-        self.assertAlmostEqual(rho[0, 10], 1.0, places=5)
+        # Note: alpha values are sorted internally, so find where alpha=0 is
+        # For alpha_vec_hz = [0, -f0, -2*f0, -3*f0], sorted becomes [-3*f0, -2*f0, -f0, 0]
+        # So alpha=0 is at index 3
+        cc0_idx = 3
+        
+        # Check that rho[cc0_idx] (no shift) has high coherence with itself
+        self.assertAlmostEqual(rho[cc0_idx, 10], 1.0, places=5)
         
         # Check that values are in [0, 1]
         self.assertTrue(np.all(rho >= -0.01))
@@ -218,7 +223,10 @@ class TestFrequencyDomainVsTimeDomain(unittest.TestCase):
         self.assertTrue(np.all(np.isfinite(rho_freq)))
         
         # Check that no-shift (alpha=0) has high self-coherence
-        self.assertGreater(np.mean(rho_freq[0, :]), 0.8)
+        # Note: alpha values are sorted, so find where 0 is
+        # For alpha_vec_hz = [0, -f0, -2*f0], sorted is [-2*f0, -f0, 0]
+        cc0_idx = 2
+        self.assertGreater(np.mean(rho_freq[cc0_idx, :]), 0.8)
 
 
 if __name__ == '__main__':
