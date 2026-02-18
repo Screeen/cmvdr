@@ -100,7 +100,11 @@ cyclic:
   P_max: 8
   use_global_coherence: true
   harmonic_threshold: 0.6
-  coherence_source_signal_name: noisy  # using noisy signal helps for high SNR
+  coherence_source_signal_name: noisy
+  use_freq_domain_coherence: false
+  freq_coherence_stft_enabled: false
+  freq_coherence_interpolation: none  # none, linear, lagrange8
+  freq_coherence_apply_phase_correction: true  # using noisy signal helps for high SNR
 
   # Good for music. no_change too small for speech (would lead to remodulation of the signals too often)
   alpha_thresholds:

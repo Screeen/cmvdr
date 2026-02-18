@@ -650,7 +650,27 @@ class F0Manager:
         max_bin = -1
         if harmonic_freqs_est.size > 0:
             max_bin = int(np.ceil((3 * SFT.delta_f + np.max(np.abs(harmonic_freqs_est))) / SFT.delta_f))
-        rho = CoherenceManager.compute_coherence(sig, SFT, mod_coherence, max_bin, min_relative_power=1.e+3)
+        
+        # Choose coherence computation method based on config
+        use_freq_domain = cfg_cyc.get('use_freq_domain_coherence', False)
+        
+        if use_freq_domain:
+            # Frequency-domain coherence path
+            use_stft = cfg_cyc.get('freq_coherence_stft_enabled', False)
+            interpolation = cfg_cyc.get('freq_coherence_interpolation', 'none')
+            apply_phase_correction = cfg_cyc.get('freq_coherence_apply_phase_correction', True)
+            
+            rho = CoherenceManager.compute_coherence_freq_shifted(
+                sig, SFT, mod_coherence.alpha_vec_hz_, max_bin,
+                min_relative_power=1.e+3,
+                use_stft=use_stft,
+                interpolation=interpolation,
+                apply_phase_correction=apply_phase_correction
+            )
+        else:
+            # Time-domain modulation path (original)
+            rho = CoherenceManager.compute_coherence(sig, SFT, mod_coherence, max_bin, min_relative_power=1.e+3)
+        
         if 0:
             cc0 = np.where(mod_coherence.alpha_vec_hz_ == 0)[0][0]
             rho_no0 = np.delete(rho, cc0, axis=0)

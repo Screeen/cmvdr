@@ -62,6 +62,196 @@ class CoherenceManager:
         return rho
 
     @staticmethod
+    def compute_coherence_freq_shifted(signal, SFT: ShortTimeFFT, alpha_vec_hz, max_bin=-1,
+                                       min_relative_power=1.e+3, use_stft=False,
+                                       interpolation='none', apply_phase_correction=True):
+        """
+        Compute coherence using frequency-domain shifts instead of time-domain modulation.
+
+        Parameters
+        ----------
+        signal : dict
+            Signal dictionary with 'time' key containing time-domain signal
+        SFT : ShortTimeFFT
+            STFT object for transform parameters
+        alpha_vec_hz : np.ndarray
+            Vector of cyclic frequencies (shifts) in Hz
+        max_bin : int
+            Maximum frequency bin to process (-1 for auto)
+        min_relative_power : float
+            Minimum relative power threshold
+        use_stft : bool
+            If True, use high-res STFT; if False, use full-file DFT
+        interpolation : str
+            Interpolation mode: 'none', 'linear', or 'lagrange8'
+        apply_phase_correction : bool
+            Apply frame-start phase correction
+
+        Returns
+        -------
+        rho : np.ndarray
+            Coherence matrix (P_sum x kk_max)
+        """
+
+        cc0 = np.where(alpha_vec_hz == 0)[0][0]
+        if max_bin == -1:
+            max_bin = int(np.ceil((3 * SFT.delta_f + np.max(np.abs(alpha_vec_hz))) / SFT.delta_f))
+
+        # Get reference signal (first microphone only)
+        assert g.mic0_idx == 0
+        sig_time = signal['time'][g.mic0_idx, :]
+
+        if use_stft:
+            # High-resolution STFT for coherence estimation
+            spec_ref = SFT.stft(sig_time)[:max_bin, :]  # (K_max, L_frames)
+        else:
+            # Full-file DFT
+            spec_ref_full = np.fft.fft(sig_time)
+            spec_ref = spec_ref_full[:max_bin, np.newaxis]  # (K_max, 1) - single "frame"
+
+        P_sum = len(alpha_vec_hz)
+        kk_max = spec_ref.shape[0]
+        frames = spec_ref.shape[1]
+
+        # Allocate output for shifted spectra
+        mod = np.zeros((P_sum, kk_max, frames), dtype=np.complex128)
+
+        # Compute shifted versions in frequency domain
+        for pp, alpha_pp in enumerate(alpha_vec_hz):
+            if np.abs(alpha_pp) < 1e-9:
+                # No shift - just copy reference
+                mod[pp, :, :] = spec_ref
+            else:
+                # Shift by alpha_pp Hz
+                mod[pp, :, :] = CoherenceManager._shift_spectrum(
+                    spec_ref, alpha_pp, SFT.delta_f, SFT.fs,
+                    interpolation, apply_phase_correction, SFT if use_stft else None
+                )
+
+        mod_c = np.conj(mod)
+
+        # Calculate PSDs
+        psds = np.mean(np.abs(mod) ** 2, axis=-1)  # (P_sum, kk_max)
+        psds = np.maximum(psds, np.max(psds[cc0]) / min_relative_power)
+
+        # Compute coherence
+        rho = CoherenceManager.compute_coherence_internal_fast(mod, mod_c, psds, alpha_vec_hz, cc0, SFT.delta_f, SFT.fs)
+        rho[cc0] = 1
+
+        return rho
+
+    @staticmethod
+    def _shift_spectrum(spec, alpha_hz, delta_f, fs, interpolation='none',
+                        apply_phase_correction=True, SFT=None):
+        """
+        Shift spectrum by alpha_hz using interpolation.
+
+        Parameters
+        ----------
+        spec : np.ndarray
+            Input spectrum (kk_max, frames)
+        alpha_hz : float
+            Frequency shift in Hz
+        delta_f : float
+            Frequency resolution
+        fs : float
+            Sample rate
+        interpolation : str
+            'none', 'linear', or 'lagrange8'
+        apply_phase_correction : bool
+            Apply phase correction for frame starts
+        SFT : ShortTimeFFT or None
+            STFT object for phase correction
+
+        Returns
+        -------
+        shifted_spec : np.ndarray
+            Shifted spectrum (kk_max, frames)
+        """
+        kk_max, frames = spec.shape
+        shifted_spec = np.zeros_like(spec)
+
+        # Alpha to bin shift (fractional)
+        bin_shift = alpha_hz / delta_f
+
+        for kk in range(kk_max):
+            # Source bin (fractional)
+            src_bin_float = kk - bin_shift
+
+            if src_bin_float < 0 or src_bin_float >= kk_max:
+                # Out of bounds
+                continue
+
+            # Interpolate complex value at fractional bin
+            if interpolation == 'none':
+                # Nearest neighbor
+                src_bin = int(np.round(src_bin_float))
+                if 0 <= src_bin < kk_max:
+                    shifted_spec[kk, :] = spec[src_bin, :]
+
+            elif interpolation == 'linear':
+                # Linear interpolation
+                src_bin_low = int(np.floor(src_bin_float))
+                src_bin_high = src_bin_low + 1
+                frac = src_bin_float - src_bin_low
+
+                if 0 <= src_bin_low < kk_max:
+                    shifted_spec[kk, :] = (1 - frac) * spec[src_bin_low, :]
+                if 0 <= src_bin_high < kk_max:
+                    shifted_spec[kk, :] += frac * spec[src_bin_high, :]
+
+            elif interpolation == 'lagrange8':
+                # 8-point Lagrange interpolation
+                shifted_spec[kk, :] = CoherenceManager._lagrange8_interpolate(
+                    spec, src_bin_float
+                )
+
+        # Apply frame-start phase correction
+        if apply_phase_correction and SFT is not None and frames > 1:
+            for frame_idx in range(frames):
+                frame_start_time = frame_idx * SFT.hop / fs
+                phase_corr = np.exp(-1j * 2 * np.pi * alpha_hz * frame_start_time)
+                shifted_spec[:, frame_idx] *= phase_corr
+
+        return shifted_spec
+
+    @staticmethod
+    def _lagrange8_interpolate(spec, src_bin_float):
+        """
+        8-point Lagrange interpolation for complex spectrum.
+
+        Parameters
+        ----------
+        spec : np.ndarray
+            Spectrum array (kk_max, frames)
+        src_bin_float : float
+            Fractional source bin index
+
+        Returns
+        -------
+        interpolated : np.ndarray
+            Interpolated values (frames,)
+        """
+        kk_max, frames = spec.shape
+        center = int(np.round(src_bin_float))
+        frac = src_bin_float - center
+
+        # 8-point window around center
+        result = np.zeros(frames, dtype=np.complex128)
+
+        for offset in range(-3, 5):  # -3, -2, -1, 0, 1, 2, 3, 4
+            src_idx = center + offset
+            if 0 <= src_idx < kk_max:
+                # Lagrange basis polynomial
+                weight = 1.0
+                for other_offset in range(-3, 5):
+                    if other_offset != offset:
+                        weight *= (frac - other_offset) / (offset - other_offset)
+                result += weight * spec[src_idx, :]
+
+        return result
+
+    @staticmethod
     def compute_coherence_internal(mod, mod_c, psds, alpha, cc0, delta_f, fs):
         # Calculate spectral coherence (squared)
         P_sum, kk_max, _ = mod_c.shape
