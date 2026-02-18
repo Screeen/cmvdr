@@ -11,6 +11,47 @@ import sys
 logger = logging.getLogger(__name__)
 
 
+# Custom YAML constructor to handle pathlib.PosixPath objects
+def path_constructor(loader, node):
+    """Construct a Path object from YAML."""
+    if isinstance(node, yaml.MappingNode):
+        # Handle !!python/object/apply:pathlib.PosixPath format
+        # The structure is like: {'listitems': [...], 'args': [...]}
+        mapping = loader.construct_mapping(node)
+        if 'listitems' in mapping:
+            # Handle the case with listitems
+            args = list(mapping['listitems'])
+        elif 'args' in mapping:
+            # Handle the case with args
+            args = list(mapping['args']) if isinstance(mapping['args'], list) else [mapping['args']]
+        else:
+            # Fallback: construct from sequence node
+            if isinstance(node, yaml.SequenceNode):
+                args = loader.construct_sequence(node)
+            else:
+                return Path(str(node.value))
+
+        if args:
+            return Path(*args)
+        return Path()
+    elif isinstance(node, yaml.SequenceNode):
+        # Handle sequence node directly
+        args = loader.construct_sequence(node)
+        if args:
+            return Path(*args)
+        return Path()
+    return Path(node.value)
+
+
+# Create a custom loader that extends FullLoader and can handle Path objects
+class PathSafeLoader(yaml.FullLoader):
+    pass
+
+
+PathSafeLoader.add_constructor('tag:yaml.org,2002:python/object/apply:pathlib.PosixPath', path_constructor)
+PathSafeLoader.add_constructor('tag:yaml.org,2002:python/object/apply:pathlib.WindowsPath', path_constructor)
+
+
 class ConfigManager:
     def __init__(self):
         self.ir_paths = {}
@@ -206,7 +247,7 @@ def load_yaml_from_path(configuration_path):
     """ Read settings from configuration file """
 
     with open(configuration_path, 'r') as f:
-        conf_dict = yaml.safe_load(f)
+        conf_dict = yaml.load(f, Loader=PathSafeLoader)
     logger.info(f"Loaded configuration file {configuration_path}")
     return conf_dict
 
@@ -353,6 +394,8 @@ def assign_default_values(cfg):
     cfg['cov_estimation'] = cfg.get('cov_estimation', {})
     cfg['cov_estimation']['use_rank1_model_for_oracle_cov_wet_estimation'] = cfg['cov_estimation'].get('use_rank1_model_for_oracle_cov_wet_estimation', True)
 
+    cfg['config_name'] = cfg.get('config_name', 'default_config')
+
     return cfg
 
 
@@ -365,7 +408,7 @@ def _load_packaged_preset(name: str) -> dict:
     try:
         pkg = resources.files("cmvdr.presets")
         txt = (pkg / resource_name).read_text()
-        return yaml.safe_load(txt) or {}
+        return yaml.load(txt, Loader=PathSafeLoader) or {}
     except Exception:
         return {}
 

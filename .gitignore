@@ -195,3 +195,4 @@ cython_debug/
 .idea
 test_install_venv/
 .idea/
+/exp_results/

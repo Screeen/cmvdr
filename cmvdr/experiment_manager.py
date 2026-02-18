@@ -7,6 +7,7 @@ from copy import deepcopy as dcopy
 from pathlib import Path
 from datetime import datetime
 from tqdm import tqdm
+import pickle
 
 from cmvdr.data_gen.data_generator import DataGenerator
 from cmvdr.data_gen.f0_manager import F0ChangeAmount, F0Manager
@@ -386,20 +387,42 @@ class ExperimentManager:
 
             print(f"Varying parameter: {parameter_to_vary}")
 
-        # Path of this module
+        # Path of this module - restructured to exp_results/{date}/{time}/
         module_path = Path(__file__).parent.parent
-        target_path_figs = module_path / Path('figs') / datetime.now().strftime("%Y-%m-%d") / time.strftime(
-            '%Hh%M')
+        exp_root_path = module_path / Path('exp_results') / datetime.now().strftime("%Y-%m-%d")
+        exp_root_name = time.strftime('%Hh%M') + '_' + Path(cfg_original['config_name']).stem
+        exp_root_path = exp_root_path / exp_root_name
+        target_path_figs = exp_root_path / 'figs'
+        target_path_data = exp_root_path / 'data'
 
-        # Plot beamforming errors
-        pl.visualize_all_results(results_data_type_plots, plot_sett, cfg_original, False, False,
-                                 target_path_figs, True)
+        # Create directories
+        target_path_data.mkdir(parents=True, exist_ok=True)
+        target_path_figs.mkdir(parents=True, exist_ok=True)
 
-        # Plot errors for frequency estimation
-        pl.visualize_all_results(results_data_type_freq_est_plots, plot_sett, cfg_original, plot_db=False,
-                                 target_path_figs_=target_path_figs)
-        pl.visualize_all_results(results_data_type_freq_est_plots, plot_sett, cfg_original, plot_db=True,
-                                 target_path_figs_=target_path_figs)
+        # Save results data BEFORE plotting (in case plotting fails)
+        results_pkl_path = target_path_data / 'results_beamforming.pkl'
+        with open(results_pkl_path, 'wb') as f:
+            pickle.dump(results_data_type_plots, f)
+        print(f"Results data saved to {results_pkl_path}")
+
+        # Save config.yaml at experiment root
+        config_yaml_path = exp_root_path / 'config.yaml'
+        config.write_configuration(cfg_original, config_yaml_path)
+        print(f"Configuration saved to {config_yaml_path}")
+
+        # Plot beamforming errors (wrapped in try-except for safety)
+        try:
+            pl.visualize_all_results(results_data_type_plots, plot_sett, cfg_original, False, False,
+                                     target_path_figs, True)
+
+            # Plot errors for frequency estimation
+            pl.visualize_all_results(results_data_type_freq_est_plots, plot_sett, cfg_original, plot_db=False,
+                                     target_path_figs_=target_path_figs)
+            pl.visualize_all_results(results_data_type_freq_est_plots, plot_sett, cfg_original, plot_db=True,
+                                     target_path_figs_=target_path_figs)
+        except Exception as e:
+            print(f"Warning: Plotting failed with error: {e}")
+            print("Results data has been saved and can be plotted later using cmvdr-plot")
 
         # Move *.pkl files from target_path_figs to target_path_figs / 'figs_pkl'
         if target_path_figs.exists() and any(target_path_figs.iterdir()):
@@ -412,9 +435,12 @@ class ExperimentManager:
             'results_data_type_plots': results_data_type_plots,
             'results_data_type_freq_est_plots': results_data_type_freq_est_plots,
             'signals_dict_all_variations_time': signals_dict_all_variations_time,
+            'exp_root_path': exp_root_path,
             'target_path_figs': target_path_figs,
             'cfg_original': cfg_original,
         }
+
+        print(exp_root_path)
 
         return ret
 
