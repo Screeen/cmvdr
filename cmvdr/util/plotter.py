@@ -65,9 +65,17 @@ def check_if_log_scale(arr):
                 ratios.append(arr[idx + 1] / np.maximum(1.e-15, arr[idx]))
         ratios = np.array(ratios)
 
+        # Handle empty ratios array or NaN mean (e.g., from repeated zeros or many near-zeros)
+        if ratios.size == 0:
+            return False, None
+
         looks_like_log_distribution = True
         log_base = None
         mean_ratio = np.mean(ratios)
+
+        # Handle NaN mean ratio
+        if not np.isfinite(mean_ratio):
+            return False, None
 
         if mean_ratio < 1.8:
             looks_like_log_distribution = False
