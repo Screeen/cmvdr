@@ -37,7 +37,11 @@ class CoherenceManager:
 
         cc0 = np.where(alpha == 0)[0][0]
         if max_bin == -1:
-            max_bin = int(np.ceil((3 * SFT.delta_f + np.max(np.abs(alpha))) / SFT.delta_f))
+            # Calculate the maximum frequency to analyze
+            # Include all alpha values plus a safety margin
+            max_freq = np.max(np.abs(alpha)) + 3 * SFT.delta_f
+            # Convert to bins
+            max_bin = int(np.ceil(max_freq / SFT.delta_f))
 
         # Modulate the data in the time domain (first microphone only)
         assert g.mic0_idx == 0
@@ -101,12 +105,25 @@ class CoherenceManager:
         )
         
         cc0 = np.where(alpha_vec_hz_sorted == 0)[0][0]
-        if max_bin == -1:
-            max_bin = int(np.ceil((3 * SFT.delta_f + np.max(np.abs(alpha_vec_hz_sorted))) / SFT.delta_f))
-
+        
         # Get reference signal (first microphone only)
         assert g.mic0_idx == 0
         sig_time = signal['time'][g.mic0_idx, :]
+        
+        # Calculate max_bin based on the actual transform being used
+        if max_bin == -1:
+            if use_stft:
+                # Use the delta_f from the STFT object that will be used
+                delta_f = SFT.delta_f
+            else:
+                # For full-file DFT, delta_f = fs / N
+                delta_f = SFT.fs / len(sig_time)
+            
+            # Calculate the maximum frequency to analyze (consistent across methods)
+            # Use the STFT's delta_f for the safety margin to maintain consistency with time-domain method
+            max_freq = np.max(np.abs(alpha_vec_hz_sorted)) + 3 * SFT.delta_f
+            # Convert to bins using the actual delta_f for this method
+            max_bin = int(np.ceil(max_freq / delta_f))
 
         if use_stft:
             # High-resolution STFT for coherence estimation
