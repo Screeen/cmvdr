@@ -303,6 +303,12 @@ class CoherenceManager:
 
         harmonic_bins_ = []
         modulation_sets_ = []
+        
+        # Find the index of alpha=0 (should always be present)
+        cc0 = np.where(alpha_vec_hz == 0)[0]
+        if cc0.size == 0:
+            raise ValueError("alpha_vec_hz must contain 0 (non-modulated frequency)")
+        cc0 = cc0[0]
 
         for kk in range(rho.shape[1]):
             rho_kk = rho[:, kk]
@@ -311,13 +317,21 @@ class CoherenceManager:
                 values_high_corr = rho_kk[indices_high_corr]  # Select modulations that have higher coherence
                 top_order = np.argsort(values_high_corr)[::-1]  # Sort by coherence
                 final_selected = indices_high_corr[top_order][:P_max_cfg]  # Keep at most P_max_cfg
-                final_selected_by_freq = np.r_[final_selected[0], np.sort(final_selected[1:])]
+                
+                # Ensure 0 (non-modulated frequency) is always at the first position
+                # This is required for the Modulator class
+                if cc0 not in final_selected:
+                    # If 0 was not selected, issue warning and force include it
+                    warnings.warn("0 should always be selected: non-modulated freq is perfectly coherent.")
+                    # Replace the lowest coherence element with cc0
+                    final_selected[-1] = cc0
+                
+                # Put cc0 at first position, then sort the rest
+                other_indices = final_selected[final_selected != cc0]
+                final_selected_by_freq = np.r_[cc0, np.sort(other_indices)]
 
                 harmonic_bins_.append(kk)
                 modulation_sets_.append(alpha_vec_hz[final_selected_by_freq])
-
-                if 0 not in alpha_vec_hz[final_selected_by_freq]:
-                    warnings.warn("0 should always be selected: non-modulated freq is perfectly coherent.")
 
         harmonic_bins_ = np.asfortranarray(harmonic_bins_)
         if harmonic_bins_.size == 0:

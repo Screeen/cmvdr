@@ -660,8 +660,22 @@ class F0Manager:
             interpolation = cfg_cyc.get('freq_coherence_interpolation', 'none')
             apply_phase_correction = cfg_cyc.get('freq_coherence_apply_phase_correction', True)
             
+            # Create high-res STFT if specified
+            nfft_coherence = cfg_cyc.get('freq_coherence_nfft', None)
+            if nfft_coherence is not None and use_stft:
+                # Create a high-resolution STFT object
+                from scipy.signal import ShortTimeFFT, get_window
+                # Use 'hann' window like the standard STFT (or extract from config if needed)
+                win_coherence = get_window('hann', nfft_coherence)
+                # Use same hop as original, or scale proportionally
+                hop_coherence = SFT.hop
+                SFT_coherence = ShortTimeFFT(win_coherence, hop_coherence, fs=SFT.fs, 
+                                            mfft=nfft_coherence, scale_to=SFT.scaling)
+            else:
+                SFT_coherence = SFT
+            
             rho = CoherenceManager.compute_coherence_freq_shifted(
-                sig, SFT, mod_coherence.alpha_vec_hz_, max_bin,
+                sig, SFT_coherence, mod_coherence.alpha_vec_hz_, max_bin,
                 min_relative_power=1.e+3,
                 use_stft=use_stft,
                 interpolation=interpolation,

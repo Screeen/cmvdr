@@ -103,6 +103,7 @@ cyclic:
   coherence_source_signal_name: noisy
   use_freq_domain_coherence: false
   freq_coherence_stft_enabled: false
+  freq_coherence_nfft: null  # null uses same nfft as main STFT, or specify a number for high-res STFT
   freq_coherence_interpolation: none  # none, linear, lagrange8
   freq_coherence_apply_phase_correction: true  # using noisy signal helps for high SNR
 

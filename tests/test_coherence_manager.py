@@ -77,8 +77,8 @@ class TestCoherenceEquivalence(unittest.TestCase):
 class TestCalculateHarmonicInfo(unittest.TestCase):
     """Tests for calculate_harmonic_info_from_coherence function."""
 
-    def test_zero_always_selected(self):
-        """Test that zero modulation is always included in final selection."""
+    def test_zero_always_at_first_position(self):
+        """Test that zero modulation is always at the FIRST position in modulation sets."""
         # Create a simple coherence matrix where alpha=0 has high coherence
         alpha_vec_hz = np.array([0, -100, -200, -300, -400])
         P_sum = len(alpha_vec_hz)
@@ -110,12 +110,13 @@ class TestCalculateHarmonicInfo(unittest.TestCase):
             self.assertEqual(len(zero_warnings), 0, 
                            f"Should not warn about missing zero when it's properly selected. Warnings: {zero_warnings}")
         
-        # Verify that zero is in the modulation sets
+        # Verify that zero is in the modulation sets AND at first position
         for mod_set in harm_info.alpha_mods_sets:
             self.assertIn(0, mod_set, "Zero should be in all modulation sets")
+            self.assertEqual(mod_set[0], 0, "Zero must be at the FIRST position (required by Modulator)")
 
-    def test_warning_when_zero_missing(self):
-        """Test that warning is raised when zero is not in high coherence indices."""
+    def test_zero_forced_at_first_position_when_low_coherence(self):
+        """Test that zero is forced to first position even when it has low coherence."""
         # Create a scenario where alpha=0 doesn't have high enough coherence
         alpha_vec_hz = np.array([0, -100, -200, -300, -400])
         P_sum = len(alpha_vec_hz)
@@ -133,7 +134,7 @@ class TestCalculateHarmonicInfo(unittest.TestCase):
         P_max_cfg = 3
         nfft_real = kk_max
         
-        # This SHOULD raise a warning since alpha=0 won't be selected
+        # This SHOULD raise a warning since alpha=0 won't be naturally selected
         import warnings
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
@@ -146,6 +147,41 @@ class TestCalculateHarmonicInfo(unittest.TestCase):
             zero_warnings = [msg for msg in warning_messages if "0 should always be selected" in msg]
             self.assertGreater(len(zero_warnings), 0, 
                              "Should warn when zero is not selected due to low coherence")
+        
+        # Verify that zero is STILL in the modulation sets at first position (forced inclusion)
+        for mod_set in harm_info.alpha_mods_sets:
+            self.assertIn(0, mod_set, "Zero should be in all modulation sets (forced)")
+            self.assertEqual(mod_set[0], 0, "Zero must be at the FIRST position even when forced")
+
+    def test_reordering_puts_zero_first(self):
+        """Test that reordering always puts zero at first position regardless of coherence order."""
+        # Test case where highest coherence is NOT at index 0
+        alpha_vec_hz = np.array([0, -100, -200, -300])
+        P_sum = len(alpha_vec_hz)
+        kk_max = 5
+        
+        rho = np.zeros((P_sum, kk_max))
+        # Make index 2 (-200) have highest coherence, but 0 also above threshold
+        rho[2, :] = 0.99  # highest
+        rho[0, :] = 0.85  # zero has second-highest
+        rho[1, :] = 0.75
+        rho[3, :] = 0.65
+        
+        thr = 0.6
+        P_max_cfg = 3
+        nfft_real = kk_max
+        
+        harm_info = CoherenceManager.calculate_harmonic_info_from_coherence(
+            alpha_vec_hz, rho, thr, P_max_cfg, nfft_real
+        )
+        
+        # Zero should be at first position despite not having highest coherence
+        for mod_set in harm_info.alpha_mods_sets:
+            self.assertEqual(mod_set[0], 0, 
+                           "Zero must be at first position even when another frequency has higher coherence")
+            # The code sorts indices, so the order is determined by the original alpha_vec_hz array
+            # For alpha_vec_hz = [0, -100, -200, -300], selecting indices [2, 0, 1] sorted becomes [0, 1, 2]
+            # which gives values [0, -100, -200] after reordering to put 0 first
 
 
 if __name__ == '__main__':
