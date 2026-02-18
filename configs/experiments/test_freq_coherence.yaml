@@ -1,14 +1,25 @@
 # Test configuration for frequency-domain coherence A/B comparison
 # Based on real_dregon.yaml
 
-base: experiments/real_dregon.yaml
+base: experiments/default.yaml
+varying_parameters_names: [M, rir_specs|rt60, cyclic|P_max,]
+harmonics_est:
+  max_num_harmonics_peaks: 10
+noise:
+  sig_type: sample
+  sample_name: DREGON_individual_motors_recordings_trimmed
+cov_estimation:
+  cov_est_forgetting_factor: 0.05 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
+
 
 # Override to enable frequency-domain coherence
 cyclic:
   use_freq_domain_coherence: true
   freq_coherence_stft_enabled: true
-  freq_coherence_interpolation: linear  # Test with linear interpolation
+  freq_coherence_interpolation: lagrange8  # Test with linear interpolation
+  freq_coherence_nfft: 32768
   freq_coherence_apply_phase_correction: true
+  harmonic_threshold: 0.8
 
 # Log comparison metrics for A/B verification
 metrics:
