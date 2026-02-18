@@ -183,6 +183,52 @@ class TestCalculateHarmonicInfo(unittest.TestCase):
             # For alpha_vec_hz = [0, -100, -200, -300], selecting indices [2, 0, 1] sorted becomes [0, 1, 2]
             # which gives values [0, -100, -200] after reordering to put 0 first
 
+    def test_zero_selected_with_multiple_equal_coherences(self):
+        """Test that zero is selected even when multiple values have identical coherence (unstable sort)."""
+        # This is the specific bug that was reported - when multiple alpha values
+        # have exactly the same coherence (e.g., 1.0), numpy's argsort has unstable
+        # behavior and cc0 might not be in the top P_max_cfg selections.
+        
+        alpha_vec_hz = np.array([0, -100, -200, -300, -400, -500, -600, -700, -800, -900])
+        P_sum = len(alpha_vec_hz)
+        kk_max = 10
+        
+        # Create coherence matrix where MANY values have exactly 1.0 coherence
+        # This simulates the real-world case where the signal has strong harmonic structure
+        rho = np.zeros((P_sum, kk_max))
+        
+        # Bin 5: First 6 alpha values all have coherence 1.0
+        rho[:6, 5] = 1.0
+        
+        # Bin 7: First 8 alpha values all have coherence 1.0
+        rho[:8, 7] = 1.0
+        
+        thr = 0.8
+        P_max_cfg = 5  # Less than the number of values with 1.0 coherence
+        nfft_real = kk_max
+        
+        # This should NOT raise a warning - the fix ensures cc0 is always prioritized
+        import warnings
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            harm_info = CoherenceManager.calculate_harmonic_info_from_coherence(
+                alpha_vec_hz, rho, thr, P_max_cfg, nfft_real
+            )
+            
+            # Check that no warning was raised
+            warning_messages = [str(warning.message) for warning in w]
+            zero_warnings = [msg for msg in warning_messages if "0 should always be selected" in msg]
+            self.assertEqual(len(zero_warnings), 0, 
+                           f"Should not warn when multiple values have same coherence. Warnings: {zero_warnings}")
+        
+        # Verify that zero is in ALL modulation sets at first position
+        for mod_set in harm_info.alpha_mods_sets:
+            self.assertIn(0, mod_set, "Zero should be in all modulation sets")
+            self.assertEqual(mod_set[0], 0, "Zero must be at the FIRST position")
+            # Verify P_max_cfg constraint is respected
+            self.assertLessEqual(len(mod_set), P_max_cfg, 
+                               f"Modulation set should have at most {P_max_cfg} elements")
+
 
 if __name__ == '__main__':
     unittest.main()

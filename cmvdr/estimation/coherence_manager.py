@@ -338,21 +338,37 @@ class CoherenceManager:
             rho_kk = rho[:, kk]
             indices_high_corr = np.where(rho_kk > thr)[0]
             if indices_high_corr.size > 1:
-                values_high_corr = rho_kk[indices_high_corr]  # Select modulations that have higher coherence
-                top_order = np.argsort(values_high_corr)[::-1]  # Sort by coherence
-                final_selected = indices_high_corr[top_order][:P_max_cfg]  # Keep at most P_max_cfg
-                
-                # Ensure 0 (non-modulated frequency) is always at the first position
-                # This is required for the Modulator class
-                if cc0 not in final_selected:
-                    # If 0 was not selected, issue warning and force include it
+                # Ensure cc0 is always included if it's above threshold
+                if cc0 in indices_high_corr:
+                    # Remove cc0 from the list temporarily so we can add it back at the start
+                    other_indices = indices_high_corr[indices_high_corr != cc0]
+                    
+                    if other_indices.size > 0:
+                        # Sort other indices by coherence value
+                        values_other = rho_kk[other_indices]
+                        top_order = np.argsort(values_other)[::-1]
+                        sorted_other = other_indices[top_order]
+                        
+                        # Take top (P_max_cfg - 1) from others, since cc0 takes one slot
+                        top_other = sorted_other[:P_max_cfg - 1]
+                        
+                        # Put cc0 first, then add the best of the others
+                        final_selected_by_freq = np.r_[cc0, np.sort(top_other)]
+                    else:
+                        # Only cc0 is above threshold
+                        final_selected_by_freq = np.array([cc0])
+                else:
+                    # cc0 not above threshold (shouldn't happen since rho[cc0] = 1)
+                    # Fall back to original logic with warning
                     warnings.warn("0 should always be selected: non-modulated freq is perfectly coherent.")
-                    # Replace the lowest coherence element with cc0
-                    final_selected[-1] = cc0
-                
-                # Put cc0 at first position, then sort the rest
-                other_indices = final_selected[final_selected != cc0]
-                final_selected_by_freq = np.r_[cc0, np.sort(other_indices)]
+                    values_high_corr = rho_kk[indices_high_corr]
+                    top_order = np.argsort(values_high_corr)[::-1]
+                    final_selected = indices_high_corr[top_order][:P_max_cfg]
+                    # Force include cc0
+                    if cc0 not in final_selected:
+                        final_selected[-1] = cc0
+                    other_indices = final_selected[final_selected != cc0]
+                    final_selected_by_freq = np.r_[cc0, np.sort(other_indices)]
 
                 harmonic_bins_.append(kk)
                 modulation_sets_.append(alpha_vec_hz[final_selected_by_freq])
