@@ -93,9 +93,16 @@ class CoherenceManager:
             Coherence matrix (P_sum x kk_max)
         """
 
-        cc0 = np.where(alpha_vec_hz == 0)[0][0]
+        # Sort alpha values to match behavior of Modulator (which sorts internally)
+        # This ensures consistent ordering with the time-domain method
+        from cmvdr.estimation.modulator import Modulator
+        alpha_vec_hz_sorted, alpha_inv = Modulator.unique_with_relative_tolerance_fast(
+            alpha_vec_hz, tol=1e-4, return_inverse=True
+        )
+        
+        cc0 = np.where(alpha_vec_hz_sorted == 0)[0][0]
         if max_bin == -1:
-            max_bin = int(np.ceil((3 * SFT.delta_f + np.max(np.abs(alpha_vec_hz))) / SFT.delta_f))
+            max_bin = int(np.ceil((3 * SFT.delta_f + np.max(np.abs(alpha_vec_hz_sorted))) / SFT.delta_f))
 
         # Get reference signal (first microphone only)
         assert g.mic0_idx == 0
@@ -109,7 +116,7 @@ class CoherenceManager:
             spec_ref_full = np.fft.fft(sig_time)
             spec_ref = spec_ref_full[:max_bin, np.newaxis]  # (K_max, 1) - single "frame"
 
-        P_sum = len(alpha_vec_hz)
+        P_sum = len(alpha_vec_hz_sorted)
         kk_max = spec_ref.shape[0]
         frames = spec_ref.shape[1]
 
@@ -117,7 +124,7 @@ class CoherenceManager:
         mod = np.zeros((P_sum, kk_max, frames), dtype=np.complex128)
 
         # Compute shifted versions in frequency domain
-        for pp, alpha_pp in enumerate(alpha_vec_hz):
+        for pp, alpha_pp in enumerate(alpha_vec_hz_sorted):
             if np.abs(alpha_pp) < 1e-9:
                 # No shift - just copy reference
                 mod[pp, :, :] = spec_ref
@@ -135,7 +142,7 @@ class CoherenceManager:
         psds = np.maximum(psds, np.max(psds[cc0]) / min_relative_power)
 
         # Compute coherence
-        rho = CoherenceManager.compute_coherence_internal_fast(mod, mod_c, psds, alpha_vec_hz, cc0, SFT.delta_f, SFT.fs)
+        rho = CoherenceManager.compute_coherence_internal_fast(mod, mod_c, psds, alpha_vec_hz_sorted, cc0, SFT.delta_f, SFT.fs)
         rho[cc0] = 1
 
         return rho
