@@ -110,7 +110,7 @@ def assign_color_and_marker_to_algorithm(algo_lower, algo_index=0):
     if 'pfcmvdr' in algo_lower and 'wl' not in algo_lower:
         color = '#ab2c32'
         marker = 'p'
-    elif 'cmvdr' in algo_lower and 'wl' not in algo_lower:
+    elif ('cmpdr' in algo_lower or 'cmvdr' in algo_lower) and 'wl' not in algo_lower:
         color = '#dc2f02'  # red
         marker = 's'
         if get_variant_display_name(
@@ -140,7 +140,7 @@ def assign_color_and_marker_to_algorithm(algo_lower, algo_index=0):
         elif get_variant_display_name('semi-oracle') in algo_lower:
             color = 'tab:blue'
             marker = '+'
-    elif 'mvdr' in algo_lower and 'wl' not in algo_lower:
+    elif ('mvdr' in algo_lower or 'mpdr' in algo_lower) and 'wl' not in algo_lower:
         color = '#68489C'  # 'tab:blue'
         marker = 'x'
         if get_variant_display_name('oracle') in algo_lower:  # should be checked first because + is part of ++
@@ -578,25 +578,18 @@ def make_dir_get_saving_path(metric_disp_name, name_varying_param):
 
 def get_display_name_beamformer(first_name_internal):
     postfix_str = ''
-    if first_name_internal == 'mvdr':
-        first_name_display = 'MVDR'
-    elif first_name_internal == 'mpdr':
+    if first_name_internal == 'mvdr' or first_name_internal == 'mpdr':
         first_name_display = 'MPDR'
     elif first_name_internal == 'mwf':
         first_name_display = 'MWF'
     elif first_name_internal == 'cmwf':
         first_name_display = 'cMWF'
         postfix_str = '(prop.)'
-    elif first_name_internal == 'cmvdr':
-        first_name_display = 'cMVDR'
-        postfix_str = '(prop.)'
-    elif first_name_internal == 'cmpdr':
+    elif first_name_internal == 'cmvdr' or first_name_internal == 'cmpdr':
+        # first_name_display = 'cMVDR'
         first_name_display = 'cMPDR'
         postfix_str = '(prop.)'
-    elif first_name_internal == 'cmvdr-wl':
-        first_name_display = 'cMVDR-WL'
-        postfix_str = '(prop.)'
-    elif first_name_internal == 'cmpdr-wl':
+    elif first_name_internal == 'cmvdr-wl' or first_name_internal == 'cmpdr-wl':
         first_name_display = 'cMPDR-WL'
         postfix_str = '(prop.)'
     elif first_name_internal == 'clcmv':
@@ -774,8 +767,8 @@ def get_parameter_display_name(parameter_to_vary, use_tex=False):
         return "Target inharmonicity [\\%]"
     elif parameter_to_vary == 'beamforming|loadings|mwf':
         return "MWF loading"
-    elif parameter_to_vary == 'beamforming|loadings|mvdr':
-        return "MVDR max. loading"
+    elif parameter_to_vary == 'beamforming|loadings|mvdr' or parameter_to_vary == 'beamforming|loadings|mpdr':
+        return "MPDR max. loading"
     elif parameter_to_vary == 'cov_estimation|noise_cov_est_len_seconds':
         return "Noise cov. est. time [s]"
     elif parameter_to_vary == 'harmonics_est|max_len_seconds':
@@ -823,7 +816,7 @@ def convert_varying_param_values_to_display(x_values_raw, name_varying_param_dis
         return [float(x) for x in x_values_raw]
     elif name_varying_param_display == display_name('beamforming|loadings|mwf'):
         return [float(x[0]) for x in x_values_raw]  # 0 to display minimum value and 1 to display maximum value
-    elif name_varying_param_display == display_name('beamforming|loadings|mvdr'):
+    elif name_varying_param_display == display_name('beamforming|loadings|mvdr') or name_varying_param_display == display_name('beamforming|loadings|mpdr'):
         return [float(x[1]) for x in x_values_raw]  # 0 to display minimum value and 1 to display maximum value
     return x_values_raw
 
@@ -835,7 +828,7 @@ def plot_spectrograms(signals_dict, freqs_hz, max_displayed_frequency_bin=10000,
     xy_labels = ('Time frame', 'Frequency bin')
     amp_range = (-130, 0)
     plt_sett = {'xy_label': xy_labels, 'amp_range': amp_range, 'normalized': False, 'show_figures': False}
-    # signals_to_skip = ['noise', 'noise_cov_est', 'wet', 'mvdr_semi-oracle', 'cmvdr_semi-oracle']
+    # signals_to_skip = ['noise', 'noise_cov_est', 'wet', 'mpdr_semi-oracle', 'cmpdr_semi-oracle']
     signals_to_skip = ['noise', 'noise_cov_est', 'wet']
     font_size = 'large'
 
@@ -986,7 +979,7 @@ def plot_waveforms(signals_dict, dft_props, alpha_list, num_chunks, slice_bf_lis
 
 
 def plot_rmse_before_average(signals, dft_props, ref_clean='wet_rank1', which_axis='time', max_freq_hz=3000,
-                             plot_diff_between_algos=False, benchmark='mvdr_blind'):
+                             plot_diff_between_algos=False, benchmark='mpdr_blind'):
     # Plot the RMSE between the reference signal and the signals. Average over "which_axis" axis.
 
     # skip_list = ['noise', 'noise_cov_est', 'noisy', 'wet', ref_name, 'mwf_blind', 'cmwf_blind']
@@ -1043,7 +1036,7 @@ def plot_rmse_before_average(signals, dft_props, ref_clean='wet_rank1', which_ax
         line_style = 'solid'
         if both_oracle_and_blind_present:
             line_style = '-.' if (
-                    'cmwf' in algo.lower() or 'prop' in algo.lower() or 'cmvdr' in algo.lower()) else 'dashed'
+                    'cmwf' in algo.lower() or 'prop' in algo.lower() or 'cmvdr' in algo.lower() or 'cmpdr' in algo.lower()) else 'dashed'
         if plot_diff_between_algos:
             ax.plot(error, linestyle=line_style)
         else:
@@ -1083,7 +1076,7 @@ def plot_rmse_before_average(signals, dft_props, ref_clean='wet_rank1', which_ax
 
 def plot_waveforms_and_spectrograms(plot_settings, signals_dict, dft_props, alpha_list, num_chunks, slice_bf_list,
                                     K_nfft, delta_t, freq_max_cyclic=10000, debug_title='',
-                                    benchmark_algo='mvdr_blind'):
+                                    benchmark_algo='mpdr_blind'):
     max_time_frames = np.iinfo(np.int32).max
     freqs_hz = np.fft.fftfreq(K_nfft, 1 / dft_props['fs'])
 
