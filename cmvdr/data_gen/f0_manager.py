@@ -692,10 +692,28 @@ class F0Manager:
             CoherenceManager.plot_coherence_matrix(rho_no0, alpha_no0, SFT)
 
         # retain highly coherent modulated components only
-        harm_info = CoherenceManager.calculate_harmonic_info_from_coherence(mod_coherence.alpha_vec_hz_, rho,
-                                                                            thr=cfg_cyc['harmonic_threshold'],
-                                                                            P_max_cfg=cfg_cyc['P_max'],
-                                                                            nfft_real=SFT.mfft // 2 + 1)
+        # Determine if frequency resolution mapping is needed
+        if use_freq and (nfft_coherence is not None and use_stft):
+            # Using high-res STFT for coherence
+            delta_f_coherence = SFT_coherence.delta_f
+            delta_f_beamforming = SFT.delta_f
+        elif use_freq and not use_stft:
+            # Using full-file DFT for coherence
+            delta_f_coherence = SFT.fs / len(sig)
+            delta_f_beamforming = SFT.delta_f
+        else:
+            # Time-domain method - coherence computed at beamforming resolution
+            delta_f_coherence = None
+            delta_f_beamforming = None
+            
+        harm_info = CoherenceManager.calculate_harmonic_info_from_coherence(
+            mod_coherence.alpha_vec_hz_, rho,
+            thr=cfg_cyc['harmonic_threshold'],
+            P_max_cfg=cfg_cyc['P_max'],
+            nfft_real=SFT.mfft // 2 + 1,
+            delta_f_coherence=delta_f_coherence,
+            delta_f_beamforming=delta_f_beamforming
+        )
         mod_amount = F0ChangeAmount.small
 
         return harm_info, mod_amount

@@ -322,11 +322,28 @@ class CoherenceManager:
         return rho
 
     @staticmethod
-    def calculate_harmonic_info_from_coherence(alpha_vec_hz, rho, thr, P_max_cfg, nfft_real) -> 'HarmonicInfo':
-        """ Calculate harmonic information (harmonic bins, modulation sets, harmonic sets) from coherence matrix. """
+    def calculate_harmonic_info_from_coherence(alpha_vec_hz, rho, thr, P_max_cfg, nfft_real, 
+                                               delta_f_coherence=None, delta_f_beamforming=None) -> 'HarmonicInfo':
+        """ Calculate harmonic information (harmonic bins, modulation sets, harmonic sets) from coherence matrix.
+        
+        Args:
+            alpha_vec_hz: Modulation frequencies in Hz
+            rho: Coherence matrix (len(alpha), K_coherence_bins)
+            thr: Coherence threshold
+            P_max_cfg: Maximum number of modulation frequencies per harmonic
+            nfft_real: Number of real FFT bins for beamforming STFT (nfft_beamforming // 2 + 1)
+            delta_f_coherence: Frequency resolution of coherence computation (Hz per bin). 
+                              If None, assumes coherence bins match beamforming bins.
+            delta_f_beamforming: Frequency resolution of beamforming STFT (Hz per bin).
+                                If None, assumes same as delta_f_coherence.
+        """
 
         harmonic_bins_ = []
         modulation_sets_ = []
+        
+        # Determine if we need to map frequency bins from coherence resolution to beamforming resolution
+        needs_freq_mapping = (delta_f_coherence is not None and delta_f_beamforming is not None 
+                             and delta_f_coherence != delta_f_beamforming)
         
         # Find the index of alpha=0 (should always be present)
         cc0 = np.where(alpha_vec_hz == 0)[0]
@@ -370,7 +387,18 @@ class CoherenceManager:
                     other_indices = final_selected[final_selected != cc0]
                     final_selected_by_freq = np.r_[cc0, np.sort(other_indices)]
 
-                harmonic_bins_.append(kk)
+                # Map high-res coherence bin to low-res beamforming bin if needed
+                if needs_freq_mapping:
+                    # Convert bin index to frequency, then to beamforming bin
+                    freq_hz = kk * delta_f_coherence
+                    kk_beamforming = int(np.round(freq_hz / delta_f_beamforming))
+                    # Ensure within bounds
+                    if kk_beamforming >= nfft_real:
+                        continue  # Skip bins beyond beamforming resolution
+                    harmonic_bins_.append(kk_beamforming)
+                else:
+                    harmonic_bins_.append(kk)
+                    
                 modulation_sets_.append(alpha_vec_hz[final_selected_by_freq])
 
         harmonic_bins_ = np.asfortranarray(harmonic_bins_)
