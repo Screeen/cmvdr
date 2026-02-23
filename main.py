@@ -22,6 +22,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     cfg_original = config.load_configuration_outer(args.config)
+    if cfg_original is None or (not cfg_original):
+        raise ValueError(f"Failed to load configuration \"{args.config}\". Please check the file path and format.")
     gs.rng, cfg_original['seed_extracted'] = gs.compute_rng(cfg_original['seed_is_random'],
                                                             cfg_original['seed_if_not_random'])
 
