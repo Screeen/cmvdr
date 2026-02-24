@@ -194,9 +194,9 @@ class ExperimentManager:
 
             # end of chunks loop
 
-        # if num_voiced_chunks > 0:
-        #     print(f"{num_voiced_chunks/num_chunks = }:.1f")
-        #     print(f"{np.mean(np.asarray(cyclic_bins_ratio_list)):.2f}")
+        if num_voiced_chunks > 0:
+            # print(f"{num_voiced_chunks/num_chunks = }:.1f")
+            print(f"{np.mean(np.asarray(cyclic_bins_ratio_list) * 100):.1f}% of the bins are cyclic on average.")
 
         bf.check_beamformed_signals_non_zero(bfd_all_chunks_stft, signals)
 
