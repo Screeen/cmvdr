@@ -264,7 +264,7 @@ class BeamformerManager:
     def check_beamformed_signals_non_zero(bfd_all_chunks_stft, signals_unproc):
         # Check if the beamformed signals are all zeros
         for bfd_name, bfd_single in bfd_all_chunks_stft.items():
-            if np.allclose(bfd_single, 0) and np.any(signals_unproc['wet_rank1']['stft'][0].real > 1e-6):
+            if np.allclose(bfd_single, 0) and 'wet_rank1' in signals_unproc and np.any(signals_unproc['wet_rank1']['stft'][0].real > 1e-6):
                 print(f"Beamformed signal {bfd_name} is all zeros.")
 
     @staticmethod
