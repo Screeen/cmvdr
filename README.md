@@ -1,14 +1,14 @@
-# cMVDR: Cyclic minimum-variance distortionless-response beamformer
+# cMPDR: Cyclic minimum power distortionless response beamformer
 Python implementation of the cyclic MVDR beamformer (also known as cyclic minimum power distortionless response, cMPDR) — a model-based algorithm for cancelling dominant **almost-cyclostationary** (ACS) interferers such as engines, fans, and musical instruments.
 
-By exploiting correlations across microphones and frequency components, the cyclic minimum-variance distortionless-response (cMVDR) beamformer achieves improved noise reduction, especially in low signal-to-noise ratio (SNR) scenarios.
+By exploiting correlations across microphones and frequency components, the cyclic minimum power distortionless response (cMPDR) beamformer achieves improved noise reduction, especially in low signal-to-noise ratio (SNR) scenarios.
 The package includes tools for estimating resonant frequencies via periodogram analysis and computing optimal frequency shifts for inharmonic signals.
 
 Applicable to speech enhancement, hearing aids, smart devices, and acoustic scene analysis.
 
 :book: Paper https://arxiv.org/abs/2510.18391v1
 
-:desktop_computer: Code https://github.com/Screeen/cmvdr/
+:desktop_computer: Code https://github.com/Screeen/cmpdr/
 <br>
 <br>
 <div align="center">
@@ -16,7 +16,7 @@ Applicable to speech enhancement, hearing aids, smart devices, and acoustic scen
 </div>
 <br>
 <br>
-The paper "cMVDR: Cyclic minimum-variance distortionless-response beamformer" is under consideration for publication in a journal.
+The paper "MPDR Beamforming for Almost-Cyclostationary Processes" is under consideration for publication in a journal.
 
 ---
 
@@ -31,8 +31,8 @@ The Python package can be cloned using pip and installed:
 
 1. Clone the repository:
 ```bash
-git clone git@github.com:Screeen/cmvdr.git
-cd cmvdr
+git clone git@github.com:Screeen/cmpdr.git
+cd cmpdr
 ```
 
 2. Create and activate a Python virtual environment:
@@ -66,21 +66,21 @@ python -m unittest discover -s tests
 ```
 
 ### 🚀 Running the quick demo
-To quickly test the cMVDR implementation, run the demo script:
+To quickly test the cMPDR implementation, run the demo script:
 ```bash
 source script/run_demo.sh
 ```
 
 ## 🖥 Using `cmvdr` and `cmvdr-eval` from the command line
 After installation, you can use the `cmvdr` and `cmvdr-eval` command line tools.
-This is the easiest way to apply the cMVDR beamformer and evaluate its performance.
+This is the easiest way to apply the cMPDR beamformer and evaluate its performance.
 `cmvdr` runs the beamforming algorithm on a specified file or folder, while `cmvdr-eval` evaluates the quality of the output.
 For usage instructions, run:
 ```bash
 cmvdr --help
 usage: cmvdr [-h] -i INPUT_PATH [-o OUTPUT_PATH] [-n NOISE_PATH] [-v]
 
-Run cMVDR inference on a single file or a folder of audio files.
+Run cMPDR inference on a single file or a folder of audio files.
 
 options:
   -h, --help            show this help message and exit
@@ -137,8 +137,8 @@ source script/run_all.sh
 python main.py --data_type synthetic  # or instruments
 ```
 
-## 🎵 Get cMVDR output for your own audio files (inference with script)
-To apply the cMVDR beamformer to your own audio files, you can use the inference script.
+## 🎵 Get cMPDR output for your own audio files (inference with script)
+To apply the cMPDR beamformer to your own audio files, you can use the inference script.
 This script processes audio files in a specified folder and saves the output to another folder.
 
 After installing the package, run:
