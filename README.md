@@ -6,7 +6,7 @@ The package includes tools for estimating resonant frequencies via periodogram a
 
 Applicable to speech enhancement, hearing aids, smart devices, and acoustic scene analysis.
 
-:book: Paper https://arxiv.org/abs/2510.18391v1
+:book: Paper https://arxiv.org/abs/2510.18391
 
 :desktop_computer: Code https://github.com/Screeen/cmpdr/
 <br>
