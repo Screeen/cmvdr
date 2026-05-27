@@ -5,10 +5,10 @@ description = "Cyclic minimum variance distortionless response beamformer for ca
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
-  {name = "Giovanni Bologni", email = "giovannibologni@gmail.com"},
+  {name = "Giovanni Bologni", email = "gbologni@mailbox.org"},
 ]
 maintainers = [
-  {name = "Giovanni Bologni", email = "giovannibologni@gmail.com"},
+  {name = "Giovanni Bologni", email = "gbologni@mailbox.org"},
 ]
 license = "MIT"
 license-files = ["LICENSE"]
