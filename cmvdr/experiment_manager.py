@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from tqdm import tqdm
 import pickle
+import soundfile
 
 from cmvdr.data_gen.data_generator import DataGenerator
 from cmvdr.data_gen.f0_manager import F0ChangeAmount, F0Manager
@@ -28,6 +29,63 @@ threshold_hz_f0_std = np.inf
 class ExperimentManager:
     def __init__(self):
         pass
+
+    @staticmethod
+    def _save_audio_files_for_iteration(signals_dict, parameter_to_vary, param_value, idx_mtc, exp_root_path, fs, source_filename=None):
+        """
+        Save audio files for a single Monte Carlo iteration with organized folder structure.
+        Creates nested directories: audio/{parameter_name}/{param_value}/{mc_idx}_{filename}/
+        Files are saved with prepended order: 1_noisy.wav, 2_wet.wav, 3_mvdr_blind.wav, 4_cmvdr_blind.wav, then others.
+
+        :param signals_dict: Dictionary containing all audio signals for this iteration
+        :param parameter_to_vary: Name of the varying parameter (e.g., 'noise|snr_db_dir')
+        :param param_value: Current value of the varying parameter
+        :param idx_mtc: Monte Carlo iteration index
+        :param exp_root_path: Root path for experiment results
+        :param fs: Sampling frequency
+        :param source_filename: Optional filename to append to the MC iteration directory name (e.g., "Motor2_70")
+        """
+        # Create directory name with optional filename
+        if source_filename:
+            # Extract just the stem without extension if it's a Path-like or full path
+            if isinstance(source_filename, (str, Path)):
+                source_filename = Path(source_filename).stem
+            dir_name = f"{idx_mtc}_{source_filename}"
+        else:
+            dir_name = str(idx_mtc)
+
+        # Create nested directory structure
+        audio_base_path = exp_root_path / 'audio' / str(parameter_to_vary) / str(param_value) / dir_name
+        audio_base_path.mkdir(parents=True, exist_ok=True)
+
+        # Define the signal order with prepended numbers
+        signal_order = ['noisy', 'wet_rank1', 'mvdr_blind', 'cmvdr_blind']
+        ordered_signals = []
+
+        # Add signals in the specified order (skip if they don't exist)
+        for idx, signal_name in enumerate(signal_order, start=1):
+            if signal_name in signals_dict and 'noise' not in signal_name:
+                ordered_signals.append((idx, signal_name))
+
+        # Add remaining signals alphabetically (excluding 'noise', signals containing 'noise' and already ordered signals)
+        remaining_signals = sorted([s for s in signals_dict.keys()
+                                   if s not in signal_order and 'noise' not in s and not isinstance(signals_dict[s], str)])
+        next_idx = len(signal_order) + 1
+        for signal_name in remaining_signals:
+            ordered_signals.append((next_idx, signal_name))
+            next_idx += 1
+
+        # Save each signal as a wav file
+        for idx_num, signal_name in ordered_signals:
+            signal_data = signals_dict[signal_name]['time']
+
+            # Handle multi-channel signals by taking the first channel only
+            if signal_data.ndim > 1:
+                signal_data = signal_data[0, :]
+
+            # Create filename with prepended order number
+            file_path = audio_base_path / f"{idx_num}_{signal_name}.wav"
+            soundfile.write(file_path, u.normalize_volume(signal_data), fs)
 
     @staticmethod
     def run_cov_estimation_beamforming(signals, f0man, f0_over_time, harmonic_freqs_est, cfg, dft_props, do_plots=False,
@@ -267,6 +325,12 @@ class ExperimentManager:
         results_data_type_freq_est_plots = {}
         signals_dict_all_variations_time = {}
 
+        # Compute exp_root_path early for streaming audio saves
+        module_path = Path(__file__).parent.parent
+        exp_root_path = module_path / Path('exp_results') / datetime.now().strftime("%Y-%m-%d")
+        exp_root_name = time.strftime('%Hh%M') + '_' + Path(cfg_original['config_name']).stem
+        exp_root_path = exp_root_path / exp_root_name
+
         varying_parameters_names = config.ConfigManager.get_varying_parameters_names(cfg_original)
         plot_sett = config.ConfigManager.get_plot_settings(cfg_original['plot'])
         u.set_plot_options(use_tex=plot_sett['use_tex'])
@@ -363,6 +427,13 @@ class ExperimentManager:
                                                                                    key in
                                                                                    signals_dict.keys()}
 
+                    # Save audio files if audio export is enabled
+                    if cfg_original.get('audio_export', False):
+                        ExperimentManager._save_audio_files_for_iteration(
+                            signals_dict, parameter_to_vary, param_value, idx_mtc, exp_root_path, fs,
+                            source_filename=cfg['noise']['sample_path']
+                        )
+
                     if 'oracle' not in cfg['harmonics_est']['algo'] and cfg['metrics']['other']:
                         harmonic_freqs_oracle = dg.sin_gen['noise'].freqs_synthetic_signal
                         res1 = evaluator.evaluate_frequency_estimation(harmonic_freqs_oracle, harmonic_freqs_est)
@@ -387,11 +458,6 @@ class ExperimentManager:
 
             print(f"Varying parameter: {parameter_to_vary}")
 
-        # Path of this module - restructured to exp_results/{date}/{time}/
-        module_path = Path(__file__).parent.parent
-        exp_root_path = module_path / Path('exp_results') / datetime.now().strftime("%Y-%m-%d")
-        exp_root_name = time.strftime('%Hh%M') + '_' + Path(cfg_original['config_name']).stem
-        exp_root_path = exp_root_path / exp_root_name
         target_path_figs = exp_root_path / 'figs'
         target_path_data = exp_root_path / 'data'
 
