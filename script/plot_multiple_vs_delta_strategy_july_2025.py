@@ -8,7 +8,7 @@ u.set_plot_options(use_tex=True)
 
 # Open pickled image from file
 # common_path = r"./src/figs/"
-# /Users/giovannibologni/Documents/TU-Delft/Code-parent/CyclicBeamforming/zz_cyclic_beamforming
+# ~/Documents/TU-Delft/Code-parent/CyclicBeamforming/zz_cyclic_beamforming
 common_path = Path("../../CyclicBeamforming/zz_cyclic_beamforming/figs").expanduser().resolve()
 # delta_path = Path(common_path) / "2025-07-15" / "16h53"
 # times_path = Path(common_path) / "2025-07-15" / "16h54"

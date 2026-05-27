@@ -95,7 +95,7 @@ def process_files_and_plot_spectrograms(input_files, output_methods=['mvdr_blind
 
 if __name__ == "__main__":
     # Single file
-    input_file = Path("/Users/giovannibologni/Documents/TU-Delft/Code-parent/datasets/10min_brushless_5s/noisy/noisy_fileid_0_clean_fileid_100-clean_fileid_1003_1850_snr-12_tl-24.wav")
+    input_file = Path("~/Documents/TU-Delft/Code-parent/datasets/10min_brushless_5s/noisy/noisy_fileid_0_clean_fileid_100-clean_fileid_1003_1850_snr-12_tl-24.wav")
     process_files_and_plot_spectrograms(input_file, output_methods=['mvdr_blind', 'cmvdr_blind'])
 
     # Multiple files

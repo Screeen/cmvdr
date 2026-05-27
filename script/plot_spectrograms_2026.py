@@ -99,27 +99,7 @@ def rename_keys(d):
 
 
 u.set_plot_options(use_tex=True)
-
-# root_path = Path("~/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h02_real_dregon/audio/noise|snr_db_dir/-20/18_Motor3_90").expanduser()
-# root_path = Path("~/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h16_real_freesound/audio/noise|snr_db_dir/-20/10_noise-free-sound-0131").expanduser()
-root_path = Path("~/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h16_real_freesound/audio/noise|snr_db_dir/-20/11_noise-free-sound-0825").expanduser()
-root_path = Path("~/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h16_real_freesound/audio/noise|snr_db_dir/-20/15_noise-free-sound-0199").expanduser()
-root_path = Path("~/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h16_real_freesound/audio/M/1/17_noise-free-sound-0438").expanduser()
-root_path = Path("~/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h16_real_freesound/audio/M/2/1_noise-free-sound-0748").expanduser()
-root_path = Path("~/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h16_real_freesound/audio/M/2/8_noise-free-sound-0395").expanduser()
-root_path = Path("/Users/giovannibologni/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h45_real_freesound/audio/noise|snr_db_dir/-5/0_noise-free-sound-0010").expanduser()
-root_path = Path("/Users/giovannibologni/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h45_real_freesound/audio/noise|snr_db_dir/-5/6_noise-free-sound-0257").expanduser()
-root_path = Path("/Users/giovannibologni/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h45_real_freesound/audio/noise|snr_db_dir/-5/5_noise-free-sound-0394").expanduser()
-root_path = Path("/Users/giovannibologni/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h59_real_freesound/audio/noise|snr_db_dir/-5/0_noise-free-sound-0257").expanduser()
-root_path = Path("/Users/giovannibologni/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h59_real_freesound/"
-                 "audio/noise|snr_db_dir/-5/10_noise-free-sound-0257").expanduser()
-root_path = Path("/Users/giovannibologni/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/15h59_real_freesound/"
-                 "audio/noise|snr_db_dir/-5/18_noise-free-sound-0257").expanduser()
-root_path = Path("/Users/giovannibologni/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/16h05_real_freesound/audio/noise|snr_db_dir/-5/12_noise-free-sound-0046").expanduser()
-
-# Good ones
-root_path = Path("/Users/giovannibologni/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/16h05_real_freesound/audio/noise|snr_db_dir/-5/40_noise-free-sound-0182").expanduser()
-root_path = Path("/Users/giovannibologni/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/16h05_real_freesound/audio/noise|snr_db_dir/-5/38_noise-free-sound-0002").expanduser()
+root_path = Path("~/Documents/TU-Delft/Code-parent/cmvdr/exp_results/2026-02-24/16h05_real_freesound/audio/noise|snr_db_dir/-5/38_noise-free-sound-0002").expanduser()
 
 fs = 16000
 audio_files_temp = AudioDiskLoader.load_audio_files(root_path, fs=fs)
