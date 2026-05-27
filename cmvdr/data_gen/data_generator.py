@@ -240,6 +240,7 @@ class DataGenerator:
                 fs=fs
             )
             print(f"File loaded: {noise_params_copy['sample_path']}")
+            noise_params['sample_path'] = noise_params_copy['sample_path']  # update the original dict for logging purposes
 
         # Remove this parameters so that "generate_self_and_dir_noises" doesn't throw TypeError
         pop_keys = ['white_lp_freq', 'sample_name', 'noise_var_rtf', 'skip_convolution_rir']
@@ -464,6 +465,7 @@ class DataGenerator:
                                                      noise_cov_est_len=int(
                                                          cfg['cov_estimation']['noise_cov_est_len_seconds'] * fs),
                                                      stft=SFT_real.stft)
+        cfg['noise']['sample_path'] = noise_params.get('sample_path', None)  # update the original dict for logging purposes
 
         if (cfg['harmonics_est']['algo'] == 'periodogram_all_harmonics' and
                 cfg['harmonics_est']['source_signal_name'] == 'noise_freq_est'):
