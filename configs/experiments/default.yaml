@@ -2,7 +2,7 @@
 
 ################################################## OLD DEFAULTS ##################################################
 seed_is_random: 0
-seed_if_not_random: 123
+seed_if_not_random: 12345
 
 num_montecarlo_simulations:       50
 max_num_varying_parameters:       199  # maximum number of experiments (e.g., SNR, P_Max, ....) to run. Set to 1 for debugging.
@@ -20,6 +20,8 @@ plot:
   separately:                   0
   waveforms:             false
   force_no_tex:          false  # set to true if you do not have Tex installed for the plots
+
+audio_export: false  # enable to save all audio files during experiment processing for later plotting
 
 fs: 16000
 
