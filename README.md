@@ -137,6 +137,14 @@ source script/run_all.sh
 python main.py --data_type synthetic  # or instruments
 ```
 
+### ⏱ Runtime benchmark
+To build the average-runtime table for MPDR vs cMPDR, run the benchmark twice and then combine the summaries:
+```bash
+python script/benchmark_runtime.py --config experiments/benchmark_mpdr.yaml
+python script/benchmark_runtime.py --config experiments/benchmark_cmpdr.yaml
+python script/benchmark_runtime.py --compare <mpdr_summary.csv> <cmpdr_summary.csv> -o exp_results/benchmarks/runtime_table.csv
+```
+
 ## 🎵 Get cMPDR output for your own audio files (inference with script)
 To apply the cMPDR beamformer to your own audio files, you can use the inference script.
 This script processes audio files in a specified folder and saves the output to another folder.
