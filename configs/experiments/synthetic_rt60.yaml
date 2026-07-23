@@ -1,0 +1,11 @@
+# Description: Configuration file for CMVDR on synthetic data.
+# This configuration file varies the RT60
+
+base: experiments/default.yaml
+varying_parameters_names: [rir_specs|rt60]
+metrics:
+  time: [ 'sisdr' ]
+harmonics_est:
+  max_num_harmonics_peaks: 16
+cov_estimation:
+  cov_est_forgetting_factor: 0.005 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.
