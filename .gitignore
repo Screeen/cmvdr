@@ -196,3 +196,5 @@ cython_debug/
 test_install_venv/
 .idea/
 /exp_results/
+/script/demos/*/*.pdf
+/script/demos/*/*.pkl
