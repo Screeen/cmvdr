@@ -27,9 +27,9 @@ from cmvdr.util import globs as gs
 
 
 DEFAULT_DATASET_CONFIGS = {
-    "Synthetic": "experiments/synthetic.yaml",
-    "MUSAN": "experiments/real_freesound.yaml",
-    "DREGON": "experiments/real_dregon.yaml",
+    "Synthetic": "benchmarks/benchmark_synthetic.yaml",
+    "MUSAN": "benchmarks/benchmark_freesound.yaml",
+    "DREGON": "benchmarks/benchmark_dregon.yaml",
 }
 
 
@@ -44,8 +44,17 @@ class StageTimings:
         return self.cyclic_s + self.covariance_s + self.beamformer_s
 
 
+OPTIONAL_SUMMARY_FIELDS = ("avg_ck", "coherent_bins_pct")
+
+
 def _set_seed(cfg):
     gs.rng, cfg["seed_extracted"] = gs.compute_rng(cfg["seed_is_random"], cfg["seed_if_not_random"])
+
+
+def _set_printoptions_numpy():
+    """ Set numpy print options to make it easier to read. Also set pprint as default for dict() """
+    desired_width = 180  # 220
+    np.set_printoptions(precision=2, linewidth=desired_width, suppress=True)
 
 
 def _resolve_config_path(name_or_path):
@@ -56,6 +65,7 @@ def _resolve_config_path(name_or_path):
     project_root = config.get_project_root()
     candidates = [
         project_root / "configs" / name_or_path,
+        project_root / "configs" / "benchmarks" / name_or_path,
         project_root / "configs" / "experiments" / name_or_path,
     ]
     for candidate in candidates:
@@ -84,7 +94,7 @@ def _prepare_cfg(cfg):
 
 def _benchmark_dataset_cfg(benchmark_cfg, dataset_cfg_name):
     dataset_cfg = _load_config_with_base(dataset_cfg_name)
-    merged = config.merge_configurations(dataset_cfg, benchmark_cfg)
+    merged = config.merge_configurations(benchmark_cfg, dataset_cfg)
     merged = _prepare_cfg(merged)
     _set_seed(merged)
     return merged
@@ -107,15 +117,32 @@ def _prepare_mpdr_signals(signals, SFT):
     return Modulator.modulate_signals(signals, ["noisy"], SFT, [np.array([0])], P_max=1, name_input_sig="noisy")
 
 
+def _coherence_metrics(harm_info):
+    coherent_mask = np.asarray(getattr(harm_info, "mask_harmonic_bins", np.array([])), dtype=bool)
+    if coherent_mask.size == 0:
+        return {"avg_ck": None, "coherent_bins_pct": 0.0}
+
+    total_bins = int(coherent_mask.size)
+    coherent_bins = int(np.count_nonzero(coherent_mask))
+    if coherent_bins == 0:
+        return {"avg_ck": None, "coherent_bins_pct": 0.0}
+
+    ck_all = np.asarray(harm_info.get_num_shifts_all_frequencies(), dtype=float)
+    avg_ck = float(np.mean(ck_all[coherent_mask])) if ck_all.size else None
+    coherent_bins_pct = 100.0 * coherent_bins / total_bins
+    return {"avg_ck": avg_ck, "coherent_bins_pct": coherent_bins_pct}
+
+
 def _timed_sample(cfg, algorithm, warmup=False):
     dg, SFT, SFT_real, dft_props = _make_stft(cfg)
     f0man = F0Manager()
     signals, _, _ = dg.generate_signals(cfg, SFT_real, dft_props)
 
+    coherence_metrics = {"avg_ck": None, "coherent_bins_pct": 0.0}
+    cyclic_timings = 0.0
     if algorithm == "mpdr":
         signals = _prepare_mpdr_signals(signals, SFT)
         harmonic_freqs_est = np.array([])
-        cyclic_timings = 0.0
     else:
         t0 = perf_counter()
         harmonic_freqs_est, _, f0_over_time = f0man.estimate_f0_or_resonant_freqs(
@@ -164,6 +191,7 @@ def _timed_sample(cfg, algorithm, warmup=False):
                         SFT,
                         cfg["cyclic"],
                     )
+                coherence_metrics = _coherence_metrics(harm_info)
 
             signals_to_modulate = config.ConfigManager.choose_signals_to_modulate(
                 cfg["cyclostationary_target"],
@@ -199,8 +227,13 @@ def _timed_sample(cfg, algorithm, warmup=False):
         timings.covariance_s += perf_counter() - t0
         cov_dict_prev = copy.deepcopy(cov_dict)
 
+        target_rtf = np.array([])
+        if 'wet' in signals:
+            target_rtf = DataGenerator.calculate_ground_truth_rtf(signals['wet'])
+
         t0 = perf_counter()
-        weights, _ = bf.compute_weights_all_beamformers(cov_dict=cov_dict, idx_chunk=idx_chunk, name_input_sig="noisy")
+        weights, _ = bf.compute_weights_all_beamformers(cov_dict=cov_dict, idx_chunk=idx_chunk, name_input_sig="noisy",
+                                                        rtf_oracle=target_rtf)
         bf.beamform_signals(
             signals["noisy"]["stft"],
             signals["noisy"]["mod_stft_3d"],
@@ -223,7 +256,14 @@ def _timed_sample(cfg, algorithm, warmup=False):
         "beamformer_s": timings.beamformer_s,
         "total_s": timings.total_s,
         "num_chunks": num_chunks,
+        "avg_ck": coherence_metrics["avg_ck"],
+        "coherent_bins_pct": coherence_metrics["coherent_bins_pct"],
     }
+
+
+def _mean_or_none(values):
+    values = [value for value in values if value is not None and np.isfinite(value)]
+    return float(np.mean(values)) if values else None
 
 
 def _aggregate_rows(rows):
@@ -240,20 +280,28 @@ def _aggregate_rows(rows):
         dataset_rows = grouped[dataset]
         runtimes = [r["runtime_s"] for r in dataset_rows]
         n = len(dataset_rows)
-        summary_rows.append(
-            {
-                "dataset": dataset,
-                "algorithm": dataset_rows[0]["algorithm"],
-                "runtime_mean_s": float(np.mean(runtimes)),
-                "samples": n,
-            }
-        )
+        row = {
+            "dataset": dataset,
+            "algorithm": dataset_rows[0]["algorithm"],
+            "runtime_mean_s": float(np.mean(runtimes)),
+            "samples": n,
+        }
+        for field in OPTIONAL_SUMMARY_FIELDS:
+            mean_value = _mean_or_none([r.get(field) for r in dataset_rows])
+            if mean_value is not None:
+                row[f"{field}_mean"] = mean_value
+        summary_rows.append(row)
         total_runtime += float(np.mean(runtimes)) * n
         total_n += n
 
     if total_n:
         overall["runtime_mean_s"] = total_runtime / total_n
         overall["samples"] = total_n
+        for field in OPTIONAL_SUMMARY_FIELDS:
+            values = [r.get(f"{field}_mean", r.get(field)) for r in summary_rows]
+            mean_value = _mean_or_none(values)
+            if mean_value is not None:
+                overall[f"{field}_mean"] = mean_value
         summary_rows.append(overall)
 
     return summary_rows
@@ -276,16 +324,32 @@ def _write_csv(path, rows):
 
 def _print_summary(summary_rows, title):
     print(title)
-    if summary_rows and "runtime_mean_s" in summary_rows[0]:
-        print("Dataset\tRuntime\tN")
+    if summary_rows and "runtime_mean_s" in summary_rows[0] and "mpdr_mean_s" not in summary_rows[0]:
+        has_coherence = "avg_ck_mean" in summary_rows[0] or "coherent_bins_pct_mean" in summary_rows[0]
+        header = "Dataset\tRuntime"
+        if has_coherence:
+            header += "\tAvg Ck\tCoherent bins %"
+        header += "\tN"
+        print(header)
         for row in summary_rows:
-            print(f"{row['dataset']}\t{row['runtime_mean_s']:.4f}\t{row['samples']}")
+            line = f"{row['dataset']}\t{row['runtime_mean_s']:.4f}"
+            if has_coherence:
+                avg_ck = row.get("avg_ck_mean")
+                coherent_bins_pct = row.get("coherent_bins_pct_mean")
+                line += f"\t{avg_ck:.4f}" if avg_ck is not None else "\t-"
+                line += f"\t{coherent_bins_pct:.2f}%" if coherent_bins_pct is not None else "\t-"
+            line += f"\t{row['samples']}"
+            print(line)
     else:
-        print("Dataset\tMPDR\tcMPDR\tSlowdown\tN")
+        print("Dataset\tMPDR\tcMPDR\tSlowdown\tAvg Ck\tCoherent bins %\tN")
         for row in summary_rows:
+            avg_ck = row.get("avg_ck_mean")
+            coherent_bins_pct = row.get("coherent_bins_pct_mean")
+            avg_ck_text = f"{avg_ck:.4f}" if avg_ck is not None else "-"
+            pct_text = f"{coherent_bins_pct:.2f}%" if coherent_bins_pct is not None else "-"
             print(
                 f"{row['dataset']}\t{row['mpdr_mean_s']:.4f}\t{row['cmpdr_mean_s']:.4f}\t"
-                f"{row['slowdown_x']:.2f}x\t{row['samples']}"
+                f"{row['slowdown_x']:.2f}x\t{avg_ck_text}\t{pct_text}\t{row['samples']}"
             )
 
 
@@ -326,6 +390,8 @@ def run_benchmark(benchmark_cfg_path):
                     "covariance_s": sample_result["covariance_s"],
                     "beamformer_s": sample_result["beamformer_s"],
                     "num_chunks": sample_result["num_chunks"],
+                    "avg_ck": sample_result["avg_ck"],
+                    "coherent_bins_pct": sample_result["coherent_bins_pct"],
                 }
             )
 
@@ -358,7 +424,11 @@ def compare_summaries(mpdr_summary_path, cmpdr_summary_path, output_path=None):
     rows = []
     total_mpdr = 0.0
     total_cmpdr = 0.0
+    total_avg_ck = 0.0
+    total_pct = 0.0
     total_n = 0
+    have_avg_ck = False
+    have_pct = False
     for dataset in datasets:
         mpdr = mpdr_map[dataset]
         cmpdr = cmpdr_map[dataset]
@@ -366,26 +436,42 @@ def compare_summaries(mpdr_summary_path, cmpdr_summary_path, output_path=None):
         mpdr_mean = float(mpdr["runtime_mean_s"])
         cmpdr_mean = float(cmpdr["runtime_mean_s"])
         slowdown = float(cmpdr_mean / mpdr_mean) if mpdr_mean > 0 else float("nan")
+        avg_ck = cmpdr.get("avg_ck_mean")
+        avg_ck = float(avg_ck) if avg_ck not in (None, "") else None
+        pct = cmpdr.get("coherent_bins_pct_mean")
+        pct = float(pct) if pct not in (None, "") else None
         rows.append(
             {
                 "dataset": dataset,
                 "mpdr_mean_s": mpdr_mean,
                 "cmpdr_mean_s": cmpdr_mean,
                 "slowdown_x": slowdown,
+                "avg_ck_mean": avg_ck,
+                "coherent_bins_pct_mean": pct,
                 "samples": n,
             }
         )
         total_mpdr += mpdr_mean * n
         total_cmpdr += cmpdr_mean * n
+        if avg_ck is not None:
+            total_avg_ck += avg_ck * n
+            have_avg_ck = True
+        if pct is not None:
+            total_pct += pct * n
+            have_pct = True
         total_n += n
 
     if total_n:
+        overall_avg_ck = (total_avg_ck / total_n) if have_avg_ck else None
+        overall_pct = (total_pct / total_n) if have_pct else None
         rows.append(
             {
                 "dataset": "Overall",
                 "mpdr_mean_s": total_mpdr / total_n,
                 "cmpdr_mean_s": total_cmpdr / total_n,
                 "slowdown_x": (total_cmpdr / total_n) / (total_mpdr / total_n),
+                "avg_ck_mean": overall_avg_ck,
+                "coherent_bins_pct_mean": overall_pct,
                 "samples": total_n,
             }
         )
@@ -418,6 +504,7 @@ def main():
     if not args.config:
         raise SystemExit("Either --config or --compare must be provided.")
 
+    _set_printoptions_numpy()
     run_benchmark(args.config)
 
 
