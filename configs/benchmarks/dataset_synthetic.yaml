@@ -1,0 +1,10 @@
+
+base: benchmarks/benchmark_base.yaml
+noise:
+  sig_type: sinusoidal
+  f0_hz: [ 60, 150 ]
+  num_harmonics: 16
+  inharmonicity_percentage: 0.
+  harmonic_correlation: 0.8
+cov_estimation:
+  cov_est_forgetting_factor: 0.005 # Default: 0.05. Higher beta (forgetting factor): we forget more, therefore more weight to the NEW covariance matrices.

@@ -1,0 +1,18 @@
+# Benchmark config for the MPDR baseline.
+base: benchmarks/benchmark_base.yaml
+
+benchmark:
+  algorithm: mpdr
+
+beamforming:
+  methods_dict:
+    mvdr: true
+    cmvdr: false
+    cmvdr-wl: false
+    clcmv: false
+    mwf: false
+    cmwf: false
+    mf: false
+
+cyclic:
+  P_max: 1

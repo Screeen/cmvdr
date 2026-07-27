@@ -1,0 +1,15 @@
+# Benchmark config for the cMPDR / cMVDR cyclic pipeline.
+base: benchmarks/benchmark_base.yaml
+
+benchmark:
+  algorithm: cmpdr
+
+beamforming:
+  methods_dict:
+    mvdr: false
+    cmvdr: true
+    cmvdr-wl: false
+    clcmv: false
+    mwf: false
+    cmwf: false
+    mf: false
