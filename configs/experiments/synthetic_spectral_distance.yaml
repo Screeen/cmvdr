@@ -1,0 +1,36 @@
+# configs/experiments/synthetic_spectral_distance.yaml
+# Description: Synthetic cyclic target/noise experiment for measuring speech/target distortion
+# as a function of spectral distance between target and noise harmonic structures.
+#
+# Target and noise are both perfectly harmonic sinusoidal signals.
+# We vary the noise fundamental frequency around the fixed target f0.
+# This is distinct from:
+# - mod_error_perc: artificial errors in estimated modulation shifts
+# - inharmonicity_percentage: physical deviation of harmonics from integer multiples
+
+base: experiments/default.yaml
+varying_parameters_names: [noise|f0_hz]
+
+target:
+  sig_type: sinusoidal
+  f0_hz: 105.5
+  num_harmonics: 16
+  harmonic_correlation: 0.8
+
+noise:
+  sig_type: sinusoidal
+  f0_hz: 105.5
+  num_harmonics: 16
+  harmonic_correlation: 0.8
+  snr_db_dir: -10
+  snr_db_self: 30
+
+harmonics_est:
+  algo: oracle_all_harmonics
+  source_signal_name: noise_cov_est
+
+cov_estimation:
+  cov_est_forgetting_factor: 0.005 # Higher forgetting factor: more weight to the NEW covariance matrices.
+
+metrics:
+  time: ['sisdr']

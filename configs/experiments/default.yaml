@@ -35,6 +35,9 @@ varying_params_values:
   rir_specs|rt60: ["0.160s", "0.360s", "0.610s"]
   noise|harmonic_correlation: [0.0, 0.2, 0.4, 0.6, 0.8, 0.99]
   noise|inharmonicity_percentage: [0.0, 0.01, 0.1, 0.5]
+  # Noise f0 around target f0 = 100 Hz.
+  # Exact alignment at 100 Hz; nearby values test increasing spectral distance.
+  noise|f0_hz: [ 100.5, 103.5, 104.5, 105.25, 105.5, 105.75, 106.5, 107.5, 110.5 ]
 
 beamforming:
   methods_dict:  # set everything to false to skip the computation of the covariance matrices and the beamforming
