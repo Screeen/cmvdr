@@ -28,7 +28,7 @@ def main():
     args = parser.parse_args()
 
     # Parse and validate paths
-    exp_path = Path(args.path)
+    exp_path = Path(args.path).expanduser().resolve()
     if not exp_path.exists():
         print(f"Error: Path does not exist: {exp_path}")
         return
