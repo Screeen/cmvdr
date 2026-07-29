@@ -168,7 +168,7 @@ def assign_color_and_marker_to_algorithm(algo_lower, algo_index=0):
 def plot_results_single_metric(ax, varying_param_values, result_single_metric, metric_display_name, algorithms,
                                name_varying_param, add_date_to_title=True, show_title=True, show_legend=True,
                                num_columns_legend=1, assign_color_marker_semimanual=True, algo_styles=None,
-                               locator_factory=None):
+                               locator_factory=None, **kwargs):
     """
     Plot the results of a single metric vs a varying parameter.
     :param ax: Matplotlib axis
@@ -184,11 +184,12 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
     :param assign_color_marker_semimanual: If True, automatically assign colors and markers to algorithms.
     :param algo_styles: List of AlgoLineStyle objects for each algorithm. If None, default styles are used.
     :param locator_factory: Function to create custom locators for x and y axes. If None, default locators are used.
+    :param kwargs: Additional keyword arguments, including x-axis display configuration.
     :rtype: matplotlib.axes.Axes
     :return:
     """
     x_values_raw = np.array(varying_param_values)
-    x_values = convert_varying_param_values_to_display(x_values_raw, name_varying_param)
+    x_values = convert_varying_param_values_to_display(x_values_raw, name_varying_param, **kwargs)
 
     num_max_x_ticks = 16
     num_x_ticks = min(num_max_x_ticks, len(x_values))
@@ -239,18 +240,20 @@ def plot_results_single_metric(ax, varying_param_values, result_single_metric, m
 
     lin_thresh, log_base = maybe_set_log_or_symlog_scale(ax, x_values, name_varying_param)
     if locator_factory is None:
+        ax.set_xticks(x_values)
+        ax.set_xticklabels(x_values, fontsize=font_size_ticks_labels)
         x_locator, y_minor_locator = _get_default_locators(ax, lin_thresh, num_x_ticks, x_values, log_base)
+        x_minor_locator = None
     else:
-        x_locator, y_minor_locator = locator_factory(ax, lin_thresh, num_x_ticks, x_values)
-
-    ax.set_xticks(x_values)
-    ax.set_xticklabels(x_values, fontsize=font_size_ticks_labels)
+        x_locator, x_minor_locator, y_minor_locator = locator_factory(ax, lin_thresh, num_x_ticks, x_values)
     if x_locator is not None:
         ax.xaxis.set_major_locator(x_locator)
     ax.tick_params(axis='both', labelsize=font_size_ticks_labels, pad=2)
     ax.grid(which='both')
 
-    # Change minor ticks to show every 5. (20/4 = 5)
+    # Change minor ticks
+    if x_minor_locator is not None:
+        ax.xaxis.set_minor_locator(x_minor_locator)
     ax.yaxis.set_minor_locator(y_minor_locator)
     ax.grid(which='major', color='#CCCCCC')
     ax.yaxis.grid(which='minor', color='#CCCCCC', linestyle='-', linewidth=0.3)
@@ -282,7 +285,8 @@ def maybe_set_log_or_symlog_scale(ax, x_values, name_varying_param=''):
     return lin_thresh, log_base
 
 
-def _get_default_locators(ax, lin_thresh, num_x_ticks: int, x_values, log_base=None) -> tuple[tck.FixedLocator, tck.AutoMinorLocator]:
+def _get_default_locators(ax, lin_thresh, num_x_ticks: int, x_values, log_base=None) -> tuple[
+    tck.FixedLocator, tck.AutoMinorLocator]:
     """ Get default locators for x and y axes. """
 
     if ax.get_xscale() == 'log' or ax.get_xscale() == 'symlog':
@@ -405,7 +409,7 @@ def plot_results(varying_param_values, result_by_metric, metrics_list, algorithm
                                             num_columns_legend=num_columns_legend,
                                             assign_color_marker_semimanual=assign_color_marker_semimanual,
                                             locator_factory=locator_factory,
-                                            algo_styles=algo_styles)
+                                            algo_styles=algo_styles, **kwargs)
 
             if 'forced_ranges' in kwargs:
                 if metric in kwargs['forced_ranges']:
@@ -459,7 +463,7 @@ def _debug_plot_all_subfigures(algorithms, figs: list[Any], kwargs: dict[str, An
         axs[idx] = plot_results_single_metric(axs[idx], varying_param_values, result_by_metric[metric],
                                               metric_disp_name, algorithms, name_varying_param,
                                               add_date_to_title=show_date_plots, show_title=show_title,
-                                              show_legend=show_legend)
+                                              show_legend=show_legend, **kwargs)
 
         if 'forced_ranges' in kwargs:
             if metric in kwargs['forced_ranges']:
@@ -490,6 +494,14 @@ def plot_legend_separate_fig(ax, fig_size: tuple, fontsize_legend: int = 8, ncol
     return fig, bbox
 
 
+def spectral_distance_locator_factory(ax, lin_thresh, num_x_ticks, x_values):
+    """ Custom locator factory for spectral distance experiments. """
+    x_locator = tck.FixedLocator([-5, -2.5, 0, 2.5, 5])
+    x_minor_locator = None  # tck.MultipleLocator(1.25)
+    y_minor_locator = tck.AutoMinorLocator(2)
+    return x_locator, x_minor_locator, y_minor_locator
+
+
 def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, print_summary=False,
                           target_path_figs_=Path('figs'), print_full_table=True):
     plot_sett_['destination'] = plot_sett_['destination_final_results']
@@ -498,6 +510,9 @@ def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, pr
     plot_sett_['show_legend'] = False if plot_sett_['destination'] == 'paper' else True
     plot_sett_['show_title'] = False if plot_sett_['destination'] == 'paper' else True
     plot_sett_['target_folder_path'] = target_path_figs_
+
+    # Pass relevant config information to plotter
+    plot_sett_['target_f0_hz'] = cfg.get('target', {}).get('f0_hz', 100)
 
     tex_available = is_tex_plotting_available(plot_sett_['force_no_tex'])
     u.set_plot_options(use_tex=plot_sett_['use_tex'] and tex_available)
@@ -517,7 +532,7 @@ def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, pr
             # Create and print the table
             from prettytable import PrettyTable
             table = PrettyTable()
-            pretty_param_name = get_parameter_display_name(plot_args_['parameter_to_vary'])
+            pretty_param_name = get_parameter_display_name(plot_args_['parameter_to_vary'], plot_sett_['use_tex'])
             table.field_names = ([pretty_param_name] +
                                  [str(x) for x in plot_args_['algorithms']])
 
@@ -562,10 +577,14 @@ def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, pr
                 if 'freq-err-mae' in metric:
                     plot_args_['metrics_list'][idx] = 'freq-err-mae-db'
 
+        if parameter_to_vary_ == 'noise|f0_hz':
+            plot_sett_['locator_factory'] = spectral_distance_locator_factory
+        else:
+            plot_sett_['locator_factory'] = None
+
         figs = plot_results(**plot_args_, **plot_sett_)
         for fig_ in figs:
             fig_.show()
-
 
     return figs
 
@@ -573,7 +592,8 @@ def visualize_all_results(results_data_type_, plot_sett_, cfg, plot_db=False, pr
 def make_dir_get_saving_path(metric_disp_name, name_varying_param):
     name_second_part = f'{metric_disp_name}_vs_{name_varying_param}'
     to_replace = {' ': '_', '=': '', ',': '', '.': '', '[': '', ']': '', '(': '', ')': '',
-                  '$': '', '\\': '', '%': 'percent', '{': '', '}': '', '#': 'num', '\\Delta': 'Delta'}
+                  '$': '', '\\': '', '%': 'percent', '{': '', '}': '', '#': 'num', '\\Delta': 'Delta',
+                  '~': '_'}
 
     for key, value in to_replace.items():
         name_second_part = name_second_part.replace(key, value)
@@ -791,12 +811,17 @@ def get_parameter_display_name(parameter_to_vary, use_tex=False):
         return "FFT size"
     elif parameter_to_vary == 'mod_error_perc':
         return 'Frequency est. error [\\%]'
+    elif parameter_to_vary == 'noise|f0_hz':
+        if use_tex:
+            return r'Fund.~freq.~offset [Hz]'
+        else:
+            return 'Noise harmonic offset [Hz]'
     else:
         print(f"Light warning: parameter {parameter_to_vary} not found in get_parameter_display_name")
         return parameter_to_vary
 
 
-def convert_varying_param_values_to_display(x_values_raw, name_varying_param_display):
+def convert_varying_param_values_to_display(x_values_raw, name_varying_param_display, **kwargs):
     display_name = lambda x: get_parameter_display_name(x)
 
     if name_varying_param_display == display_name('chunk_len'):
@@ -824,8 +849,17 @@ def convert_varying_param_values_to_display(x_values_raw, name_varying_param_dis
         return [float(x) for x in x_values_raw]
     elif name_varying_param_display == display_name('beamforming|loadings|mwf'):
         return [float(x[0]) for x in x_values_raw]  # 0 to display minimum value and 1 to display maximum value
-    elif name_varying_param_display == display_name('beamforming|loadings|mvdr') or name_varying_param_display == display_name('beamforming|loadings|mpdr'):
+    elif name_varying_param_display == display_name(
+            'beamforming|loadings|mvdr') or name_varying_param_display == display_name('beamforming|loadings|mpdr'):
         return [float(x[1]) for x in x_values_raw]  # 0 to display minimum value and 1 to display maximum value
+    elif name_varying_param_display in [
+        display_name('noise|f0_hz'),
+        get_parameter_display_name('noise|f0_hz', use_tex=True),
+        get_parameter_display_name('noise|f0_hz', use_tex=False)
+    ]:
+        target_f0 = kwargs.get('target_f0_hz', 100)
+        offsets = np.array(x_values_raw) - target_f0
+        return offsets
     return x_values_raw
 
 
