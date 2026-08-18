@@ -1,6 +1,12 @@
 # cMPDR: Cyclic minimum power distortionless response beamformer
 Python implementation of the cyclic MVDR beamformer (also known as cyclic minimum power distortionless response, cMPDR) — a model-based algorithm for cancelling dominant **almost-cyclostationary** (ACS) interferers such as engines, fans, and musical instruments.
-
+<br>
+<br>
+<div align="center">
+  <img src="pics/cmpdr1_example_specs.png?" alt="Overview of results on synthetic data" width="500"/>
+</div>
+<br>
+<br>
 By exploiting correlations across microphones and frequency components, the cyclic minimum power distortionless response (cMPDR) beamformer achieves improved noise reduction, especially in low signal-to-noise ratio (SNR) scenarios.
 The package includes tools for estimating resonant frequencies via periodogram analysis and computing optimal frequency shifts for inharmonic signals.
 
@@ -8,12 +14,11 @@ Applicable to speech enhancement, hearing aids, smart devices, and acoustic scen
 
 :book: **Paper (PDF)** https://arxiv.org/abs/2510.18391
 
-:computer: **New follow work** [@narrietal/cMPDR_DNN](https://github.com/narrietal/cMPDR_DNN/)
-
+:computer: **New follow-up work** [@narrietal/cMPDR_DNN](https://github.com/narrietal/cMPDR_DNN/)
 <br>
 <br>
 <div align="center">
-  <img src="pics/detailed_scheme.png?" alt="Overview of results on synthetic data" width="500"/>
+  <img src="pics/cmpdr2_scheme.png?" alt="Overview of results on synthetic data" width="500"/>
 </div>
 <br>
 <br>
